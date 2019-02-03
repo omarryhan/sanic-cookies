@@ -1,3 +1,8 @@
+<p align="center">
+    <a href="https://travis-ci.org/omarryhan/sanic-cookies"><img alt="Build Status" src="https://travis-ci.org/omarryhan/sanic-cookies.svg?branch=master"></a>
+    <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-GNU-brightgreen.svg?style=flat-square"></a>
+</p>
+
 # Sanic Cookies
 
 Code here is mostly borrowed from [sanic_session](https://github.com/xen/sanic_session).
