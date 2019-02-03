@@ -1,6 +1,12 @@
 from .interfaces import (
     InMemory,
-    Aioredis
+    Aioredis,
+    InCookie
+)
+
+from .models import (
+    FernetCookie,
+    SessionDict
 )
 
 from .sessions import (

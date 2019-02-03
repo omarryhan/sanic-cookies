@@ -12,6 +12,8 @@ async-timeout = "*"
 
 [packages]
 ujson = "*"
+sanic = "*"
+cryptography = "*"
 
 [requires]
 python_version = "3.7"

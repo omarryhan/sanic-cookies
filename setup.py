@@ -8,7 +8,9 @@ print([f for f in listdir(mypath) if isfile(join(mypath, f))])
 
 
 REQUIREMENTS = [
-    'ujson'
+    'ujson',
+    'sanic',
+    'cryptography'
 ]
 
 TEST_REQUIREMENTS = []

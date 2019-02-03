@@ -31,7 +31,8 @@ async def test_session_dict_locked_by_sid(Session, Interface):
 
     async with session_dict as sess:
         assert sess['foo'] == 'bar'
-    assert lock_keeper.acquired_locks[SID].locked() is False
+    assert lock_keeper.acquired_locks.get(SID) is None
+    #assert lock_keeper.acquired_locks[SID].locked() is False
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('Interface', [MockInterface, InMemory])
