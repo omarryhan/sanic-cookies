@@ -47,7 +47,7 @@ I wanted to make some changes that would break a big part of `sanic_session`'s A
 
     @app.route('/')
     async def handler(request):
-        async with request['session'] as sess:  # While not necessary with the in-memory interface, it is highly recommended with standalone interfaces like Redis
+        async with request['session'] as sess:
             sess['foo'] = 'bar'
 
 
