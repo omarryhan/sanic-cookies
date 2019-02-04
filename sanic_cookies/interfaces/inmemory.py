@@ -1,4 +1,5 @@
 import time
+import asyncio
 
 
 class ExpiringDict(dict):
@@ -25,9 +26,31 @@ class ExpiringDict(dict):
         del self.expiry_times[key]
 
 class InMemory:
-    def __init__(self, store=ExpiringDict, prefix='session:'):
+    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1):
         self.prefix = prefix
         self._store = store()
+        self.cleanup_interval = cleanup_interval
+        self.cleaner = None
+
+    def init_interface(self):
+        # Call after the event loop starts
+        # Will not be called by the session interface
+
+        async def clean_up_expired_keys():
+            while True:
+                await asyncio.sleep(self.cleanup_interval)
+                for k, v in list(self._store.items()):
+                    c_time = time.time()
+                    if time.time() > self._store.expiry_times[k]:
+                        del self._store[k]
+                        del self._store.expiry_times[k]
+
+        loop = asyncio.get_event_loop()
+        self.cleaner = loop.create_task(clean_up_expired_keys())
+
+    def kill_interface(self):
+        if self.cleaner is not None:
+            self.cleaner.cancel()
 
     async def fetch(self, sid):
         return self._store.get(self.prefix + sid)
