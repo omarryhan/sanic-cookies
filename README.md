@@ -38,19 +38,16 @@ I wanted to make some changes that would break a big part of `sanic_session`'s A
     Session(app, master_interface=interface)
 
     # You can skip this part if you don't want scheduled interface cleanup
-    def init_sanic_app():
-        @app.listener('before_server_start')
-        def init_inmemory(app, loop):
-            interface.init()
-
-        @app.listener('after_server_stop')
-        def kill_inmemory(app, loop):
-            interface.kill()
-
+    @app.listener('before_server_start')
+    def init_inmemory(app, loop):
+        interface.init()
+    @app.listener('after_server_stop')
+    def kill_inmemory(app, loop):
+        interface.kill()
 
     @app.route('/')
     async def handler(request):
-        async with request['session'] as sess:  # While not necessary with the in memory interface, it really is with standalone interfaces like Redis
+        async with request['session'] as sess:  # While not necessary with the in-memory interface, it is highly recommended with standalone interfaces like Redis
             sess['foo'] = 'bar'
 
 
