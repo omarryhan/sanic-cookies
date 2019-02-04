@@ -32,7 +32,7 @@ class InMemory:
         self.cleanup_interval = cleanup_interval
         self.cleaner = None
 
-    def init_interface(self):
+    def init(self):
         # Call after the event loop starts
         # Will not be called by the session interface
 
@@ -40,7 +40,6 @@ class InMemory:
             while True:
                 await asyncio.sleep(self.cleanup_interval)
                 for k, v in list(self._store.items()):
-                    c_time = time.time()
                     if time.time() > self._store.expiry_times[k]:
                         del self._store[k]
                         del self._store.expiry_times[k]
@@ -48,7 +47,7 @@ class InMemory:
         loop = asyncio.get_event_loop()
         self.cleaner = loop.create_task(clean_up_expired_keys())
 
-    def kill_interface(self):
+    def kill(self):
         if self.cleaner is not None:
             self.cleaner.cancel()
 

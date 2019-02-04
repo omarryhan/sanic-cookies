@@ -27,7 +27,33 @@ I wanted to make some changes that would break a big part of `sanic_session`'s A
     unless it's explicitly turned off (warn_lock=False)
 
 3. A more simple implementation of SessionDict that helps me sleep in peace at night. (Probably less performant)
+4. In memory interface schedules cleanup to avoid running out of memory
 
-### If enough people are interested, I can write some docs. Meanwhile, if you excuse me...
+## Quick Start
+
+    from sanic_cookies import Session, InMemory
+
+    interface = InMemory()
+    app = Sanic()
+    Session(app, master_interface=interface)
+
+    # You can skip this part if you don't want scheduled interface cleanup
+    def init_sanic_app():
+        @app.listener('before_server_start')
+        def init_inmemory(app, loop):
+            interface.init()
+
+        @app.listener('after_server_stop')
+        def kill_inmemory(app, loop):
+            interface.kill()
+
+
+    @app.route('/')
+    async def handler(request):
+        async with request['session'] as sess:  # While not necessary with the in memory interface, it really is with standalone interfaces like Redis
+            sess['foo'] = 'bar'
+
+
+**If enough people are interested, I can write some docs. Meanwhile, if you excuse me...**
 
 ![Gotta go fast!!](http://sd.keepcalm-o-matic.co.uk/i/gotta-go-fast-sanic-fast.png)
