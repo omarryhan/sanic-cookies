@@ -147,7 +147,7 @@ class AuthSession(BaseSession):
             # Get custom expiry
             expiry = val.get(_DURATION_KEY) or self.expiry
             # / Get custom expiry
-            val = self.to_json(val)
+            val = ujson.dumps(val)
             for interface in self.interfaces:
                 await interface.store(sid, expiry, val)
 

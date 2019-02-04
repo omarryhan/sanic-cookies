@@ -1,5 +1,6 @@
 import time
 import uuid
+from collections import deque
 
 import ujson
 from ..models import SessionDict, Object
@@ -53,20 +54,20 @@ class BaseSession:
         self.warn_lock = warn_lock
         self.store_factory = store_factory
         
-        self.interfaces = []
+        self.interfaces = deque()
         if master_interface is not None:
-            self.interfaces.append(master_interface)
+            self.interfaces.appendleft(master_interface)
 
         if not hasattr(app, 'exts'):
             app.exts = Object()
         setattr(app.exts, self.session_name, self)
 
         app.register_middleware(
-            lambda request: self.open_sess(self, request), 
+            lambda request: self._open_sess(self, request), 
             attach_to='request'
         )
         app.register_middleware(
-            lambda request, response: self.close_sess(self, request, response), 
+            lambda request, response: self._close_sess(self, request, response), 
             attach_to='response'
         )
 
@@ -80,14 +81,13 @@ class BaseSession:
         self.interfaces.append(interface)
 
     def set_master_interface(self, interface, overwrite=True):
-        if overwrite:
-            if self.interfaces:
-                self.interfaces[0] = interface
-            else:
-                self.interfaces = []
-                self.interfaces.append(interface)
+        if self.interfaces:
+            if overwrite:
+                self.interfaces.popleft()
+            self.interfaces.appendleft(interface)
         else:
-            self.interfaces = [interface] + self.interfaces
+            self.interfaces = deque()
+            self.interfaces.appendleft(interface)
 
     @property
     def master_interface(self):
@@ -100,10 +100,11 @@ class BaseSession:
 
     async def _fetch_sess(self, sid):
         val = await self.master_interface.fetch(sid)
-        return self.from_json(val)
+        if val is not None:
+            return ujson.loads(val)
 
     async def _post_sess(self, sid, val):
-        val = self.to_json(val)
+        val = ujson.dumps(val)
         if val is not None:
             [await interface.store(sid, self.expiry, val) for interface in self.interfaces]
 
@@ -117,29 +118,22 @@ class BaseSession:
         expires = time.time() + expiry
         return time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime(expires))
 
-    def get_sid(self, request, external=True):
+    def _get_sid(self, request, external=True):
         if external:
             return request.cookies.get(self.cookie_name)
         else:
             return request[self.session_name].sid
 
-    def to_json(self, val):
-        return ujson.dumps(val)
-
-    def from_json(self, val):
-        if val is not None:
-            return ujson.loads(val)
-
     #### -------------- Loading --------------- ####
 
     @staticmethod
-    async def open_sess(self, request):
+    async def _open_sess(self, request):
         ''' Sets a session_dict to request '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         request[self.session_name] = await self._load_sess(request)
 
     async def _load_sess(self, request):
-        sid = self.get_sid(request, external=True)
+        sid = self._get_sid(request, external=True)
         if not sid:
             sid = uuid.uuid4().hex
             session_dict = self.store_factory(
@@ -167,20 +161,20 @@ class BaseSession:
     #### ------------ Saving --------------- ####
 
     @staticmethod
-    async def close_sess(self, request, response):
+    async def _close_sess(self, request, response):
         ''' Saves request[session_dict] if set to none or deleted:
         Then should cascade these changes to the response and self.interfaces '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         session_dict = request.get(self.session_name)
         if session_dict is not None:
-            external_sid = self.get_sid(request, external=True)
-            internal_sid = self.get_sid(request, external=False)
+            external_sid = self._get_sid(request, external=True)
+            internal_sid = self._get_sid(request, external=False)
             if (external_sid != internal_sid) or session_dict.is_modified:
                 await self._post_sess(internal_sid, request[self.session_name].store)
                 await self._set_cookie(request, response)
         else:
             # if it was purposefully deleted or set to None
-            await self._del_sess(self.get_sid(request, external=True))
+            await self._del_sess(self._get_sid(request, external=True))
             self._del_cookie(request, response)
 
     #### ------------ Cookie Munching ------------- ####
@@ -211,7 +205,7 @@ class BaseSession:
                 response.cookies[self.cookie_name][name] = value
 
     def _del_cookie(self, request, response):
-        sid = self.get_sid(request, external=True)
+        sid = self._get_sid(request, external=True)
         if sid:
             response.cookies[self.cookie_name] = sid
             response.cookies[self.cookie_name]['expires'] = 0
