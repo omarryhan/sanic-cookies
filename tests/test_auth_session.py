@@ -1,6 +1,6 @@
 import pytest
 
-from sanic_cookies import AuthSession
+from sanic_cookies import AuthSession, login_required
 from sanic_cookies.sessions.sessions import _DURATION_KEY, _REMEMBER_ME_KEY
 from .common import MockApp, MockInterface, MockSession, MockRequest, MockAuthSession, MockSessionDict
 
@@ -33,51 +33,60 @@ async def test_login_user():
 
     assert await sess.current_user(request) is None
 
+
+def mock_no_auth_handler(request, *args, **kwargs):
+    return NO_AUTH_MSG
+
+sess = MockAuthSession()
+
+AUTH_MSG = 'AUTH'
+NO_AUTH_MSG = 'NO_AUTH'
+
+@login_required(no_auth_handler=mock_no_auth_handler, session_name=sess.session_name)
+def sync_route(request):
+    return AUTH_MSG
+
+@login_required(no_auth_handler=mock_no_auth_handler, session_name=sess.session_name)
+async def async_route(request):
+    return AUTH_MSG
+
+@sess.login_required(no_auth_handler=mock_no_auth_handler)
+def sync_route_(request):
+    return AUTH_MSG
+
+@sess.login_required(no_auth_handler=mock_no_auth_handler)
+def async_route_(request):
+    return AUTH_MSG
+
 @pytest.mark.asyncio
-async def test_login_required():
+@pytest.mark.parametrize('route', [sync_route, async_route, sync_route_, async_route_])
+async def test_login_required(route):
 
     # SETUP
-    sess = MockAuthSession()
     session_dict = MockSessionDict(session=sess)
     request = MockRequest(session_dict=session_dict)
+    setattr(request.app.exts, sess.session_name, sess)
     AUTH_KEY = 'current_mock_user'
     sess.auth_key = AUTH_KEY
     MOCK_USER = {'id': 2}
-
-
-    NO_AUTH_MSG = 'NO_AUTH'
-    def mock_no_auth_handler(request, *args, **kwargs):
-        return NO_AUTH_MSG
-
-    AUTH_MSG = 'AUTH'
-    @sess.login_required(no_auth_handler=mock_no_auth_handler)
-    def sync_route(request):
-        return AUTH_MSG
-
-    @sess.login_required(no_auth_handler=mock_no_auth_handler)
-    async def async_route(request):
-        return AUTH_MSG
 
     # Assert no user is logged in
     assert await sess.current_user(request) is None
 
     # TEST NO AUTH
-    assert await async_route(request) == NO_AUTH_MSG
-    assert await sync_route(request) == NO_AUTH_MSG
+    assert await route(request) == NO_AUTH_MSG
 
     await sess.login_user(request=request, user=MOCK_USER)
     assert await sess.current_user(request) == MOCK_USER
 
     # TEST AUTH
-    assert await async_route(request) == AUTH_MSG
-    assert await async_route(request) == AUTH_MSG
+    assert await route(request) == AUTH_MSG
 
     await sess.logout_user(request)
     assert await sess.current_user(request) is None
 
     # TEST NO AUTH
-    assert await async_route(request) == NO_AUTH_MSG
-    assert await sync_route(request) == NO_AUTH_MSG
+    assert await route(request) == NO_AUTH_MSG
 
 def test_custom_post_sess():
     # TODO: 

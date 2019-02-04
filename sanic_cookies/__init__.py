@@ -10,4 +10,5 @@ from .models import (
 from .sessions import (
     Session,
     AuthSession,
+    login_required,
 )

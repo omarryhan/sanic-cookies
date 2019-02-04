@@ -57,6 +57,25 @@ _REMEMBER_ME_KEY = '_remember_me'
 _DURATION_KEY = '_override_expiry'
 
 
+def login_required(no_auth_handler=None, session_name='auth_session'):
+    ''' No auth handler overrides self.no_auth_handler 
+    Don't pass _self any arguments '''
+    def wrapped(fn):
+        @wraps(fn)
+        async def innerwrap(request, *args, **kwargs):
+            self = getattr(request.app.exts, session_name)
+            user = await self.current_user(request)
+            if user is None:
+                return_function = no_auth_handler or default_no_auth_handler
+            else:
+                return_function = fn
+            if iscoroutinefunction(return_function):
+                return await return_function(request, *args, **kwargs)
+            else:
+                return return_function(request, *args, **kwargs)
+        return innerwrap
+    return wrapped
+
 class AuthSession(BaseSession):
     '''
     Session with auth helpers
@@ -129,13 +148,17 @@ class AuthSession(BaseSession):
             store_factory=store_factory
         )
 
-    async def login_user(self, request, user, duration=None, remember_me=True):
+    async def login_user(self, request, user, duration=None, remember_me=True, reset_store=False):
         ''' User should be JSON serializable
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
             remember_me: Whether or not this user session will be a session_cookie
+            reset_store: Whether or not to reset the session dict before adding a current user
+                         Defaults to persisting data from anonymous user
         '''
         async with request[self.session_name] as sess:
+            if reset_store is True:
+                sess.reset()
             sess[self.auth_key] = user
             sess[_REMEMBER_ME_KEY] = remember_me
             if isinstance(duration, int):
@@ -166,26 +189,23 @@ class AuthSession(BaseSession):
     async def logout_user(self, request):
         async with request[self.session_name] as sess:
             if self.auth_key in sess:
-                del sess[self.auth_key]
+                sess.reset()
 
     async def current_user(self, request):
         async with request[self.session_name] as sess:
             return sess.get(self.auth_key)
 
-    # wrapper
     def login_required(self, no_auth_handler=None):
-        ''' No auth handler overrides self.no_auth_handler '''
-        def wrapped(fn):
-            @wraps(fn)
-            async def innerwrap(request, *args, **kwargs):
-                user = await self.current_user(request)
-                if user is None:
-                    return_function = no_auth_handler or self.no_auth_handler
-                else:
-                    return_function = fn
-                if iscoroutinefunction(return_function):
-                    return await return_function(request, *args, **kwargs)
-                else:
-                    return return_function(request, *args, **kwargs)
-            return innerwrap
-        return wrapped
+        return login_required(
+            no_auth_handler=no_auth_handler or self.no_auth_handler, 
+            session_name=self.session_name
+        )
+
+    #def __getattr__(self, key):
+    #    # Makes login required act as a method as well as a global
+    #    if key == 'login_required':
+    #        return lambda no_auth_handler=None: login_required(
+    #            no_auth_handler=no_auth_handler or self.no_auth_handler,
+    #            session_name=self.session_name
+    #        )
+    #    return super().__getattr__(self, key)

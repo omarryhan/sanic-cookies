@@ -170,7 +170,7 @@ class BaseSession:
             external_sid = self._get_sid(request, external=True)
             internal_sid = self._get_sid(request, external=False)
             if (external_sid != internal_sid) or session_dict.is_modified:
-                await self._post_sess(internal_sid, request[self.session_name].store)
+                await self._post_sess(internal_sid, request[self.session_name].json())
                 await self._set_cookie(request, response)
         else:
             # if it was purposefully deleted or set to None

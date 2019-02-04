@@ -1,4 +1,5 @@
 from .sessions import (
     Session,
-    AuthSession
+    AuthSession,
+    login_required,
 )

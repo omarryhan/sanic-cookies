@@ -16,10 +16,14 @@ class MockInterface:
         if sid in self._store:
             del self._store[sid]
 
+class MockExtensions:
+    pass
+
 class MockApp:
     def __init__(self):
         self.req_middleware = []
         self.res_middleware = []
+        self.exts = MockExtensions()
     
     def register_middleware(self, middleware, attach_to=None):
         if attach_to == 'request':
@@ -40,8 +44,9 @@ class MockSessionDict(SessionDict):
         super().__init__(session=session, *args, **kwargs)
     
 class MockRequest:
-    def __init__(self, session_dict=MockSessionDict()):
+    def __init__(self, session_dict=MockSessionDict(), app=MockApp()):
         setattr(self, session_dict.session.session_name, session_dict)
+        self.app = app
 
     def __getitem__(self, k):
         return getattr(self, k)

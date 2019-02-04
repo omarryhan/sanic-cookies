@@ -100,6 +100,13 @@ class SessionDict(abc.MutableMapping):
         else:
             raise AttributeError(key)
 
+    def reset(self):
+        self.store = {}
+        self.is_modified = True
+
+    def json(self):
+        return self.store
+
     def is_locked(self):
         if self.sid in lock_keeper.acquired_locks:
             return lock_keeper.acquired_locks[self.sid].locked()
