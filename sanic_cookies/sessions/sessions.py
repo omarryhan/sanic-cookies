@@ -1,4 +1,4 @@
-from inspect import isawaitable
+from inspect import iscoroutinefunction
 from functools import wraps
 
 import ujson
@@ -49,8 +49,13 @@ class Session(BaseSession):
             store_factory=store_factory
         )
 
-def default_no_auth_handler(request):
+def default_no_auth_handler(request, *args, **kwargs):
     abort(401)
+
+
+_REMEMBER_ME_KEY = '_remember_me'
+_DURATION_KEY = '_override_expiry'
+
 
 class AuthSession(BaseSession):
     '''
@@ -128,28 +133,28 @@ class AuthSession(BaseSession):
         ''' User should be JSON serializable
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
-            Whether or not this user session will be a session_cookie
+            remember_me: Whether or not this user session will be a session_cookie
         '''
         async with request[self.session_name] as sess:
             sess[self.auth_key] = user
-            sess['_remember_me'] = remember_me
+            sess[_REMEMBER_ME_KEY] = remember_me
             if isinstance(duration, int):
                 sess['_override_expiry'] = duration
 
-    # Overriding
+    # Overriding (to set custom expiry (login_user(duration)))
     async def _post_sess(self, sid, val):
         if val is not None:
             # Get custom expiry
-            expiry = val.get('_override_expiry') or self.expiry
+            expiry = val.get(_DURATION_KEY) or self.expiry
             # / Get custom expiry
             val = self.to_json(val)
             for interface in self.interfaces:
                 await interface.store(sid, expiry, val)
 
-    # Overriding
+    # Overriding (to set remember_me)
     async def _set_cookie_expiry(self, request, response):
         async with request[self.session_name] as sess:
-            if sess.get('_remember_me') is False:
+            if sess.get(_REMEMBER_ME_KEY) is False:
                 session_cookie = True
             else:
                 session_cookie = self.session_cookie
@@ -175,12 +180,12 @@ class AuthSession(BaseSession):
             async def innerwrap(request, *args, **kwargs):
                 user = await self.current_user(request)
                 if user is None:
-                    no_auth_handler = no_auth_handler or self.no_auth_handler
-                    return no_auth_handler(request)
+                    return_function = no_auth_handler or self.no_auth_handler
                 else:
-                    if isawaitable(fn):
-                        return await fn(request, *args, **kwargs)
-                    else:
-                        return fn(request, *args, **kwargs)
+                    return_function = fn
+                if iscoroutinefunction(return_function):
+                    return await return_function(request, *args, **kwargs)
+                else:
+                    return return_function(request, *args, **kwargs)
             return innerwrap
         return wrapped

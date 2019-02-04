@@ -1,4 +1,5 @@
-from sanic_cookies import Session
+from sanic_cookies import Session, AuthSession
+from sanic_cookies import SessionDict
 
 
 class MockInterface:
@@ -27,5 +28,20 @@ class MockApp:
             self.res_middleware = [attach_to] + self.res_middleware
         
 class MockSession(Session):
-    def __init__(self, *args, **kwargs):
-        super().__init__(MockApp(), *args, **kwargs)
+    def __init__(self, app=MockApp(), master_interface=MockInterface(), *args, **kwargs):
+        super().__init__(app=app, master_interface=master_interface, *args, **kwargs)
+
+class MockAuthSession(AuthSession):
+    def __init__(self, app=MockApp(), master_interface=MockInterface(), *args, **kwargs):
+        super().__init__(app=app, master_interface=master_interface, *args, **kwargs)
+
+class MockSessionDict(SessionDict):
+    def __init__(self, session=MockSession(), *args, **kwargs):
+        super().__init__(session=session, *args, **kwargs)
+    
+class MockRequest:
+    def __init__(self, session_dict=MockSessionDict()):
+        setattr(self, session_dict.session.session_name, session_dict)
+
+    def __getitem__(self, k):
+        return getattr(self, k)

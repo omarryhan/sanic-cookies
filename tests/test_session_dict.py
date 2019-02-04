@@ -33,3 +33,30 @@ async def test_aenter_returns_same_instance():
 
     async with sess as ret_sess:
         assert ret_sess is sess
+
+@pytest.mark.asyncio
+async def test_is_modified():
+    sess = SessionDict(session=MockSession(master_interface=MockInterface()), warn_lock=False)
+    
+    # Doesn't set is_modified upon instantiation
+    assert sess.is_modified is False
+
+    # Doesn't set is modified with ctx manager alone
+    async with sess:
+        pass
+    assert sess.is_modified is False
+
+    # sets is_modified False when exiting context manager
+    async with sess:
+        sess['foo'] = 'bar'
+        assert sess.is_modified is True
+    assert sess.is_modified is False
+
+    # Sets is_modified on write
+    sess['foo'] = 'baz'
+    assert sess.is_modified is True
+
+    # Doesn't set is_modified on read
+    sess.is_modified = False
+    sess['foo']
+    assert sess.is_modified is False

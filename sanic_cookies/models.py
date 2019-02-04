@@ -49,7 +49,7 @@ class SessionDict(abc.MutableMapping):
         self.sid = sid
         self.session = session
         self.warn_lock = warn_lock
-        self.is_modified = False  # Hardcoded for now
+        self.is_modified = False
 
     def _warn_if_not_locked(self):
         if self.is_locked() is not True and self.warn_lock is True:
@@ -90,6 +90,11 @@ class SessionDict(abc.MutableMapping):
             'setdefault'
         ):
             self._warn_if_not_locked()
+            # is_modified shouldn't be
+            # toggled here because when you __getattr__ 
+            # you don't actually run the method, But i'll do 
+            # anyway for convenience (instead of overriding or wrapping
+            # These methods)
             self.is_modified = True
             return getattr(self.store, key)
         else:
@@ -108,85 +113,8 @@ class SessionDict(abc.MutableMapping):
         return self
 
     async def __aexit__(self, *args):
-        # TODO: Post only if modified
         if self.is_modified:
             await self.session._post_sess(self.sid, self.store)
             self.is_modified = False
         lock_keeper.release(self.sid)
         assert self.is_locked() is False
-
-class _FernetCookie(SessionDict):
-    '''
-    'initial' should always be == sid
-    Warn lock will be hardcoded to False
-    '''
-    def __init__(self, key, initial=None, sid=None, session=None, warn_lock=None):
-        self._sid = sid or initial
-        self.session = session
-        self.warn_lock = False
-        self.is_modified = True
-        self.key = key
-        self.fernet = Fernet(self.key)
-        self.store = sid or initial
-
-    @property
-    def store(self):
-        # Return decrypt sid
-        if self._sid['sid'] == 'nill':
-            return {}
-        try:
-            data = self.fernet.decrypt(self._sid['sid'].encode())
-        except InvalidToken:
-            return {}
-        else:
-            return ujson.loads(data)
-
-    @store.setter
-    def store(self, val):
-        sid = self.fernet.encrypt(
-            ujson.dumps(val).encode()
-        ).decode()
-        self._sid = {
-            'sid': sid
-        }
-
-    @property
-    def sid(self):
-        # Return encrypt store
-        sid = self.fernet.encrypt(
-            ujson.dumps(self.store).encode()
-        ).decode()
-        return ujson.dumps({'sid': sid})
-
-    #@sid.setter
-    #def sid(self, value):
-    #    pass
-
-def FernetCookie(key):
-    ''' Encrypted fernet cookie 
-
-    Not working (yet)
-
-
-    .. example ::
-
-        Example key:
-
-            from cryptography.fernet import Fernet
-            key = Fernet.generate_key()
-
-        Obviously, you have to save the generated key somewhere in your configs
-        and not generate it on the fly
-
-    .. note ::
-
-        Don't use FernetCookie with server-side interfaces
-        Only use it with The incookie interface
-    '''
-    return lambda initial=None, sid=None, session=None, warn_lock=None: _FernetCookie(
-        key=key,
-        initial=initial,
-        sid={'sid': 'nill'},
-        session=session,
-        warn_lock=False
-    )

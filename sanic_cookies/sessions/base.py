@@ -175,8 +175,6 @@ class BaseSession:
         if session_dict is not None:
             external_sid = self.get_sid(request, external=True)
             internal_sid = self.get_sid(request, external=False)
-            # Check external_sid == internal_sid (in case store factory_implements a cookie based store instead of a server based one)
-            # When changing the value of the store it should reflect on the SID as well. And when it does we need it to be updated
             if (external_sid != internal_sid) or session_dict.is_modified:
                 await self._post_sess(internal_sid, request[self.session_name].store)
                 await self._set_cookie(request, response)
@@ -189,8 +187,13 @@ class BaseSession:
 
     async def _set_cookie_expiry(self, request, response):
         if not self.session_cookie:
-            response.cookies[self.cookie_name]['expires'] = self._calculate_expires(self.expiry)
-            response.cookies[self.cookie_name]['max-age'] = self.expiry
+            expires = self._calculate_expires(self.expiry)
+            max_age = self.expiry
+        else:
+            expires = None
+            max_age = None
+        response.cookies[self.cookie_name]['expires'] = expires
+        response.cookies[self.cookie_name]['max-age'] = max_age
         return request, response
 
     async def _set_cookie(self, request, response):
