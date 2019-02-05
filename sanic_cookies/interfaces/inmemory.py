@@ -1,5 +1,6 @@
 import time
 import asyncio
+import uuid
 
 import ujson
 
@@ -34,13 +35,14 @@ class InMemory:
             e.g. json, ujson, pickle, cpickle, bson, msgpack etc..
             Default ujson
     '''
-    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1, encoder=ujson.dumps, decoder=ujson.loads):
+    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1, encoder=ujson.dumps, decoder=ujson.loads, sid_factory=lambda: uuid.uuid4().hex):
         self.prefix = prefix
         self._store = store()
         self.cleanup_interval = cleanup_interval
         self.cleaner = None
         self.encoder = encoder
         self.decoder = decoder
+        self.sid_factory = sid_factory
 
     def init(self):
         # Call after the event loop starts
@@ -61,16 +63,16 @@ class InMemory:
         if self.cleaner is not None:
             self.cleaner.cancel()
 
-    async def fetch(self, sid):
+    async def fetch(self, sid, **kwargs):
         val = self._store.get(self.prefix + sid)
         if val is not None:
             return self.decoder(val)
 
-    async def delete(self, sid):
+    async def delete(self, sid, **kwargs):
         if sid in self._store:
             self._store.delete(self.prefix + sid)
 
-    async def store(self, sid, expiry, val):
+    async def store(self, sid, expiry, val, **kwargs):
         if val is not None:
             val = self.encoder(val)
             self._store.set(

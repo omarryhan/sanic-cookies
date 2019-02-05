@@ -6,13 +6,13 @@ class MockInterface:
     def __init__(self):
         self._store = {}
 
-    async def fetch(self, sid):
+    async def fetch(self, sid, request=None, cookie_name=None):
         return self._store.get(sid)
 
-    async def store(self, sid, expiry, data):
+    async def store(self, sid, expiry, data, request=None, cookie_name=None, session_name=None):
         self._store[sid] = data
 
-    async def delete(self, sid):
+    async def delete(self, sid, request=None, cookie_name=None, session_name=None):
         if sid in self._store:
             del self._store[sid]
 

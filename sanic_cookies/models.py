@@ -44,12 +44,25 @@ lock_keeper = LockKeeper()
 
 class SessionDict(abc.MutableMapping):
 
-    def __init__(self, initial=None, sid=None, session=None, warn_lock=True):
+    def __init__(self, initial=None, sid=None, session=None, warn_lock=True, request=None):
         self.store = initial or {}
         self.sid = sid
         self.session = session
         self.warn_lock = warn_lock
         self.is_modified = False
+        self.request = request
+
+    #@property
+    #def store(self):
+    #    # In case a user: >>> del request['session']._store
+    #    if not getattr(self, '_store'):
+    #        self.is_modified = True
+    #        self._store = {}
+    #    return self._store
+
+    #@store.setter
+    #def store(self, value):
+    #    self._store = value
 
     def _warn_if_not_locked(self):
         if self.is_locked() is not True and self.warn_lock is True:
@@ -104,9 +117,6 @@ class SessionDict(abc.MutableMapping):
         self.store = {}
         self.is_modified = True
 
-    def json(self):
-        return self.store
-
     def is_locked(self):
         if self.sid in lock_keeper.acquired_locks:
             return lock_keeper.acquired_locks[self.sid].locked()
@@ -116,12 +126,12 @@ class SessionDict(abc.MutableMapping):
     async def __aenter__(self):
         await lock_keeper.acquire(self.sid)
         assert self.is_locked() is True
-        self.store = await self.session._fetch_sess(self.sid) or {}
+        self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
     async def __aexit__(self, *args):
         if self.is_modified:
-            await self.session._post_sess(self.sid, self.store)
+            await self.session._post_sess(self.sid, self.store, request=self.request)
             self.is_modified = False
         lock_keeper.release(self.sid)
         assert self.is_locked() is False

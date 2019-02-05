@@ -124,13 +124,13 @@ class AuthSession(BaseSession):
                 sess['_override_expiry'] = duration
 
     # Overriding (to set custom expiry (login_user(duration)))
-    async def _post_sess(self, sid, val):
+    async def _post_sess(self, sid, val, request=None, response=None):
         # Get custom expiry
         if val is not None:
             expiry = val.get(_DURATION_KEY) or self.expiry
         else:
             expiry = self.expiry
-        [await interface.store(sid, expiry, val) for interface in self.interfaces]
+        [await interface.store(sid, expiry, val, request=request, cookie_name=self.cookie_name, session_name=self.session_name) for interface in self.interfaces]
 
     # Overriding (to set remember_me)
     async def _set_cookie_expiry(self, request, response):
