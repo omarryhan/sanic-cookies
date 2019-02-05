@@ -107,7 +107,7 @@ class AuthSession(BaseSession):
             store_factory=store_factory,
         )
 
-    async def login_user(self, request, user, duration=None, remember_me=True, reset_store=False):
+    async def login_user(self, request, user, duration=None, remember_me=True, reset_store=True):
         '''
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
