@@ -6,7 +6,7 @@ class MockInterface:
     def __init__(self):
         self._store = {}
 
-    async def fetch(self, sid, request=None, cookie_name=None):
+    async def fetch(self, sid, expiry=None, request=None, cookie_name=None):
         return self._store.get(sid)
 
     async def store(self, sid, expiry, data, request=None, cookie_name=None, session_name=None):

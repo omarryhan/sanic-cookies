@@ -98,7 +98,7 @@ class BaseSession:
     #### ------------- Interface API -------------- ####
 
     async def _fetch_sess(self, sid, request=None):
-        return await self.master_interface.fetch(sid, request=request, cookie_name=self.cookie_name)
+        return await self.master_interface.fetch(sid, expiry=self.expiry, request=request, cookie_name=self.cookie_name)
 
     async def _post_sess(self, sid, val, request=None, response=None):
         [await interface.store(sid, self.expiry, val, request=request, cookie_name=self.cookie_name, session_name=self.session_name) for interface in self.interfaces]

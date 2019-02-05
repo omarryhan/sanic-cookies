@@ -36,10 +36,10 @@ class InCookieEnc:  # pragma: no cover
         new_sid = self._ensure_encoded(new_sid)
         return self.fernet.encrypt(new_sid).decode()
 
-    def _decrypt(self, val):
+    def _decrypt(self, val, ttl):
         val = self._ensure_encoded(val)
         try:
-            val = self.fernet.decrypt(val)
+            val = self.fernet.decrypt(val, ttl=ttl)
             if val is not None:
                 return self.decoder(val)
         except InvalidToken:
@@ -48,10 +48,10 @@ class InCookieEnc:  # pragma: no cover
     def sid_factory(self):
         return self._encrypt({})
 
-    async def fetch(self, sid, request, cookie_name):
+    async def fetch(self, sid, expiry, request, cookie_name):
         sid = request.cookies.get(cookie_name)
         if sid is not None:
-            return self._decrypt(sid)
+            return self._decrypt(sid, expiry)
         else:
             return {}
 
