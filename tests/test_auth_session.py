@@ -1,7 +1,7 @@
 import pytest
 
 from sanic_cookies import AuthSession, login_required
-from sanic_cookies.sessions.sessions import _DURATION_KEY, _REMEMBER_ME_KEY
+from sanic_cookies.sessions.auth import _DURATION_KEY, _REMEMBER_ME_KEY
 from .common import MockApp, MockInterface, MockSession, MockRequest, MockAuthSession, MockSessionDict
 
 

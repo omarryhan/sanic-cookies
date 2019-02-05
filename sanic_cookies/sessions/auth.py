@@ -5,49 +5,8 @@ import ujson
 from sanic.exceptions import abort
 
 from .base import BaseSession
-from .. import SessionDict
+from ..models import SessionDict
 
-
-class Session(BaseSession):
-    '''
-    Generic Session
-    '''
-    def __init__(
-        self,
-        app,
-        master_interface=None,  # Master read
-
-        cookie_name='SESSION',
-        domain=None,
-        expiry=30*24*60*60,
-        httponly=False,
-        secure=False,
-        samesite=False,
-        session_cookie=False,
-        path=None,
-        comment=None,
-
-        session_name='session',
-        warn_lock=True,
-        store_factory=SessionDict
-    ):
-        super().__init__(
-            app=app,
-            master_interface=master_interface,
-            cookie_name=cookie_name,
-            domain=domain,
-            expiry=expiry,
-            httponly=httponly,
-            secure=secure,
-            samesite=samesite,
-            session_cookie=session_cookie,
-            path=path,
-            comment=comment,
-
-            session_name=session_name,
-            warn_lock=warn_lock,
-            store_factory=store_factory
-        )
 
 def default_no_auth_handler(request, *args, **kwargs):
     abort(401)
@@ -125,7 +84,7 @@ class AuthSession(BaseSession):
 
         auth_key='current_user',
         no_auth_handler=None,
-        store_factory=SessionDict
+        store_factory=SessionDict,
     ):
 
         self.auth_key = auth_key
@@ -145,11 +104,11 @@ class AuthSession(BaseSession):
 
             session_name=session_name,
             warn_lock=warn_lock,
-            store_factory=store_factory
+            store_factory=store_factory,
         )
 
     async def login_user(self, request, user, duration=None, remember_me=True, reset_store=False):
-        ''' User should be JSON serializable
+        '''
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
             remember_me: Whether or not this user session will be a session_cookie
@@ -166,13 +125,12 @@ class AuthSession(BaseSession):
 
     # Overriding (to set custom expiry (login_user(duration)))
     async def _post_sess(self, sid, val):
+        # Get custom expiry
         if val is not None:
-            # Get custom expiry
             expiry = val.get(_DURATION_KEY) or self.expiry
-            # / Get custom expiry
-            val = ujson.dumps(val)
-            for interface in self.interfaces:
-                await interface.store(sid, expiry, val)
+        else:
+            expiry = self.expiry
+        [await interface.store(sid, expiry, val) for interface in self.interfaces]
 
     # Overriding (to set remember_me)
     async def _set_cookie_expiry(self, request, response):

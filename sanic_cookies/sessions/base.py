@@ -38,7 +38,7 @@ class BaseSession:
 
         session_name='session',
         warn_lock=True,
-        store_factory=SessionDict
+        store_factory=SessionDict,
     ):
         self.cookie_name = cookie_name
         self.domain = domain
@@ -99,14 +99,10 @@ class BaseSession:
     #### ------------- Interface API -------------- ####
 
     async def _fetch_sess(self, sid):
-        val = await self.master_interface.fetch(sid)
-        if val is not None:
-            return ujson.loads(val)
+        return await self.master_interface.fetch(sid)
 
     async def _post_sess(self, sid, val):
-        val = ujson.dumps(val)
-        if val is not None:
-            [await interface.store(sid, self.expiry, val) for interface in self.interfaces]
+        [await interface.store(sid, self.expiry, val) for interface in self.interfaces]
 
     async def _del_sess(self, sid):
         [await interface.delete(sid) for interface in self.interfaces]
@@ -210,4 +206,46 @@ class BaseSession:
             response.cookies[self.cookie_name] = sid
             response.cookies[self.cookie_name]['expires'] = 0
             response.cookies[self.cookie_name]['max-age'] = 0
+
+
+class Session(BaseSession):
+    '''
+    Generic Session
+    '''
+    def __init__(
+        self,
+        app,
+        master_interface=None,  # Master read
+
+        cookie_name='SESSION',
+        domain=None,
+        expiry=30*24*60*60,
+        httponly=False,
+        secure=False,
+        samesite=False,
+        session_cookie=False,
+        path=None,
+        comment=None,
+
+        session_name='session',
+        warn_lock=True,
+        store_factory=SessionDict,
+    ):
+        super().__init__(
+            app=app,
+            master_interface=master_interface,
+            cookie_name=cookie_name,
+            domain=domain,
+            expiry=expiry,
+            httponly=httponly,
+            secure=secure,
+            samesite=samesite,
+            session_cookie=session_cookie,
+            path=path,
+            comment=comment,
+
+            session_name=session_name,
+            warn_lock=warn_lock,
+            store_factory=store_factory,
+        )
 

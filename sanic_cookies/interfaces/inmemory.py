@@ -1,6 +1,8 @@
 import time
 import asyncio
 
+import ujson
+
 
 class ExpiringDict(dict):
     def __init__(self):
@@ -26,11 +28,19 @@ class ExpiringDict(dict):
         del self.expiry_times[key]
 
 class InMemory:
-    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1):
+    '''
+        encoder & decoder:
+
+            e.g. json, ujson, pickle, cpickle, bson, msgpack etc..
+            Default ujson
+    '''
+    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1, encoder=ujson.dumps, decoder=ujson.loads):
         self.prefix = prefix
         self._store = store()
         self.cleanup_interval = cleanup_interval
         self.cleaner = None
+        self.encoder = encoder
+        self.decoder = decoder
 
     def init(self):
         # Call after the event loop starts
@@ -52,15 +62,19 @@ class InMemory:
             self.cleaner.cancel()
 
     async def fetch(self, sid):
-        return self._store.get(self.prefix + sid)
+        val = self._store.get(self.prefix + sid)
+        if val is not None:
+            return self.decoder(val)
 
     async def delete(self, sid):
         if sid in self._store:
             self._store.delete(self.prefix + sid)
 
     async def store(self, sid, expiry, val):
-        self._store.set(
-            self.prefix + sid,
-            expiry,
-            val
-        )
+        if val is not None:
+            val = self.encoder(val)
+            self._store.set(
+                self.prefix + sid,
+                expiry,
+                val
+            )
