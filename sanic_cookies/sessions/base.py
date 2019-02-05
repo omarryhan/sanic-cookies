@@ -179,13 +179,8 @@ class BaseSession:
 
     async def _set_cookie_expiry(self, request, response):
         if not self.session_cookie:
-            expires = self._calculate_expires(self.expiry)
-            max_age = self.expiry
-        else:
-            expires = None
-            max_age = None
-        response.cookies[self.cookie_name]['expires'] = expires
-        response.cookies[self.cookie_name]['max-age'] = max_age
+            response.cookies[self.cookie_name]['expires'] = self._calculate_expires(self.expiry)
+            response.cookies[self.cookie_name]['max-age'] = self.expiry
         return request, response
 
     async def _set_cookie_from_request(self, request, response):
