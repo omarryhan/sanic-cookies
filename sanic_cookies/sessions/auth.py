@@ -146,8 +146,8 @@ class AuthSession(BaseSession):
 
     async def logout_user(self, request):
         async with request[self.session_name] as sess:
-            if self.auth_key in sess:
-                sess.reset()
+            #if self.auth_key in sess:
+            sess.reset()
 
     async def current_user(self, request):
         async with request[self.session_name] as sess:
