@@ -9,6 +9,8 @@ Code here is mostly borrowed from [sanic_session](https://github.com/xen/sanic_s
 
 I wanted to make some changes that would break a big part of `sanic_session`'s API, so I decided to create this repo instead.
 
+Sanic cookies supports both client side and server side cookies.
+
 ## Some of the main deviations from sanic_session are:
 
 1. Interfaces are only responsible for reading/writing the `session_dict`. Session management logic is handled by the session object
@@ -28,6 +30,7 @@ I wanted to make some changes that would break a big part of `sanic_session`'s A
 
 3. A more simple implementation of SessionDict that helps me sleep in peace at night. (Probably less performant)
 4. In memory interface schedules cleanup to avoid running out of memory
+5. Client side cookies
 
 ## Quick Start
 
