@@ -1,7 +1,7 @@
 import ujson
 from cryptography.fernet import Fernet, InvalidToken
 
-class InCookieEnc:  # pragma: no cover
+class InCookieEnc:
     '''
         Encrypted in cookie storage
 
@@ -56,9 +56,7 @@ class InCookieEnc:  # pragma: no cover
             return {}
 
     async def store(self, sid, expiry, val, request, cookie_name, session_name):
-        if request is not None:
-            request[session_name].sid = self._encrypt(val)
+        request[session_name].sid = self._encrypt(val)
 
     async def delete(self, sid, request, cookie_name, session_name):
-        if request is not None:
-            request[session_name].sid = self._encrypt(val)
+        request[session_name].sid = self.sid_factory()

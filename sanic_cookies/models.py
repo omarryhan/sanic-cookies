@@ -114,8 +114,10 @@ class SessionDict(abc.MutableMapping):
             raise AttributeError(key)
 
     def reset(self):
-        self.store = {}
-        self.is_modified = True
+        if getattr(self, 'store') != {}:
+            self._warn_if_not_locked()
+            self.store = {}
+            self.is_modified = True
 
     def is_locked(self):
         if self.sid in lock_keeper.acquired_locks:
