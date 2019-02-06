@@ -58,10 +58,11 @@ async def test_only_saves_with_ctx(Session, Interface):
 
     session_dict['foo'] = 'bar'
 
-    async with session_dict as sess:
-        # Should find None, because when you access without a context manager 
-        # the only time it will save is after the response middleware is called
-        sess.get('foo') is None
+    with pytest.warns(RuntimeWarning):  # Mixed access warning
+        async with session_dict as sess:
+            # Should find None, because when you access without a context manager 
+            # the only time it will save is after the response middleware is called
+            sess.get('foo') is None
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('Interface', [MockInterface, InMemory])
