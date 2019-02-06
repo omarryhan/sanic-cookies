@@ -19,6 +19,33 @@ UNLOCKED_WARNING_MSG = '''
         request['session']['foo']
 ''', RuntimeWarning
 
+UNLOCKED_LOCKED_ACCESS_MIX_MSG = '''
+    User session has been modified without a context manager all previous changes will be discarded.
+    Please stick to using one method of access within the same request.
+
+    e.g. Either:
+
+        async with request['session'] as sess:
+            sess['foo'] = 'bar'
+        async with request['session'] as sess:
+            sess['bar'] = 'baz'
+
+    OR:
+
+        request['session']['foo'] = 'bar'
+        request['session']['bar'] = 'baz'
+
+    NOT:
+
+        request['session']['foo'] = 'bar'
+        async with request['session'] as sess:
+            sess['bar'] = 'baz'
+
+    If you're seeing this warning message, it means that either you or a library you're using
+    has tried to access the session object without a context manager then you discarded the changes 
+    that have been made by *correctly* using the async context manager
+''', RuntimeWarning
+
 class Object:
     pass
 
@@ -51,18 +78,6 @@ class SessionDict(abc.MutableMapping):
         self.warn_lock = warn_lock
         self.is_modified = False
         self.request = request
-
-    #@property
-    #def store(self):
-    #    # In case a user: >>> del request['session']._store
-    #    if not getattr(self, '_store'):
-    #        self.is_modified = True
-    #        self._store = {}
-    #    return self._store
-
-    #@store.setter
-    #def store(self, value):
-    #    self._store = value
 
     def _warn_if_not_locked(self):
         if self.is_locked() is not True and self.warn_lock is True:
@@ -126,6 +141,10 @@ class SessionDict(abc.MutableMapping):
             return False
 
     async def __aenter__(self):
+        if self.is_modified is True:
+            warnings.warn(
+                *UNLOCKED_LOCKED_ACCESS_MIX_MSG
+            )
         await lock_keeper.acquire(self.sid)
         assert self.is_locked() is True
         self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
