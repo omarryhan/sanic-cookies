@@ -92,8 +92,6 @@ class BaseSession:
     def master_interface(self):
         if self.interfaces:
             return self.interfaces[0]
-        else:
-            return None
 
     #### ------------- Interface API -------------- ####
 
@@ -129,32 +127,18 @@ class BaseSession:
 
     async def _load_sess(self, request):
         sid = self._get_sid(request, external=True)
+        initial = None
         if not sid:
             sid = self.master_interface.sid_factory()
-            session_dict = self.store_factory(
-                sid=sid,
-                session=self,
-                warn_lock=self.warn_lock,
-                request=request
-            )
         else:
-            val = await self._fetch_sess(sid, request=request)
-            if val is not None:
-                session_dict = self.store_factory(
-                    initial=val,
-                    sid=sid,
-                    session=self,
-                    warn_lock=self.warn_lock,
-                    request=request
-                )
-            else:
-                session_dict = self.store_factory(
-                    sid=sid,
-                    session=self,
-                    warn_lock=self.warn_lock,
-                    request=request
-                )
-        return session_dict
+            initial = await self._fetch_sess(sid, request=request)
+        return self.store_factory(
+            initial=initial,
+            sid=sid,
+            session=self,
+            warn_lock=self.warn_lock,
+            request=request
+        )
 
     #### ------------ Saving --------------- ####
 

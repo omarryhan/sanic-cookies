@@ -29,7 +29,7 @@ class MockApp:
         if attach_to == 'request':
             self.req_middleware.append(middleware)
         elif attach_to == 'response':
-            self.res_middleware = [attach_to] + self.res_middleware
+            self.res_middleware = [middleware] + self.res_middleware
         
 class MockSession(Session):
     def __init__(self, app=MockApp(), master_interface=MockInterface(), *args, **kwargs):

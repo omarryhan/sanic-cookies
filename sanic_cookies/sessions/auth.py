@@ -8,6 +8,8 @@ from .base import BaseSession
 from ..models import SessionDict
 
 
+__all__ = ['AuthSession', 'login_required']
+
 def default_no_auth_handler(request, *args, **kwargs):
     abort(401)
 
@@ -121,7 +123,7 @@ class AuthSession(BaseSession):
             sess[self.auth_key] = user
             sess[_REMEMBER_ME_KEY] = remember_me
             if isinstance(duration, int):
-                sess['_override_expiry'] = duration
+                sess[_DURATION_KEY] = duration
 
     # Overriding (to set custom expiry (login_user(duration)))
     async def _post_sess(self, sid, val, request=None, response=None):
@@ -144,10 +146,10 @@ class AuthSession(BaseSession):
             response.cookies[self.cookie_name]['max-age'] = self.expiry
         return request, response
 
-    async def logout_user(self, request):
+    async def logout_user(self, request, logout_anon=True):
         async with request[self.session_name] as sess:
-            #if self.auth_key in sess:
-            sess.reset()
+            if logout_anon or (not logoutanon and self.current_user):
+                sess.reset()
 
     async def current_user(self, request):
         async with request[self.session_name] as sess:
@@ -158,12 +160,3 @@ class AuthSession(BaseSession):
             no_auth_handler=no_auth_handler or self.no_auth_handler, 
             session_name=self.session_name
         )
-
-    #def __getattr__(self, key):
-    #    # Makes login required act as a method as well as a global
-    #    if key == 'login_required':
-    #        return lambda no_auth_handler=None: login_required(
-    #            no_auth_handler=no_auth_handler or self.no_auth_handler,
-    #            session_name=self.session_name
-    #        )
-    #    return super().__getattr__(self, key)

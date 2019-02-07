@@ -40,10 +40,11 @@ class InCookieEnc:
         val = self._ensure_encoded(val)
         try:
             val = self.fernet.decrypt(val, ttl=ttl)
-            if val is not None:
-                return self.decoder(val)
         except InvalidToken:
             return {}
+        else:
+            if val is not None:
+                return self.decoder(val)
 
     def sid_factory(self):
         return self._encrypt({})
