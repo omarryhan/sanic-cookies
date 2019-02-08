@@ -73,12 +73,23 @@ class SessionDict(abc.MutableMapping):
 
     def __init__(self, initial=None, sid=None, session=None, warn_lock=True, request=None):
         self.store = initial or {}
-        self.sid = sid
+        self._sid = sid
         self.session = session
         self.warn_lock = warn_lock
         self.is_modified = False
-        self.init_sid = None
+        self.is_sid_modified = False
+        self.prev_sid = None
         self.request = request
+
+    @property
+    def sid(self):
+        return self._sid
+
+    @sid.setter
+    def sid(self, val):
+        self.prev_sid = self._sid
+        self.is_sid_modified = True
+        self._sid = val
 
     def _warn_if_not_locked(self):
         if self.is_locked() is not True and self.warn_lock is True:
@@ -109,6 +120,9 @@ class SessionDict(abc.MutableMapping):
 
     def __str__(self, *args, **kwargs):  # pragma: no cover
         return self.store.__str__(*args, **kwargs)
+
+    def __contains__(self, key):
+        return self.store.__contains__(key)
 
     def __getattr__(self, key):
         if key in (
@@ -142,21 +156,23 @@ class SessionDict(abc.MutableMapping):
             return False
 
     async def __aenter__(self):
-        if self.is_modified is True:
+        if self.is_modified or self.is_sid_modified:
             warnings.warn(
                 *UNLOCKED_LOCKED_ACCESS_MIX_MSG
             )
-        self.init_sid = self.sid
         await lock_keeper.acquire(self.sid)
         self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
     async def __aexit__(self, *args):
-        is_sid_changed = self.init_sid != self.sid
         if self.is_modified:
-            if is_sid_changed:
-                await self.session._del_sess(self.init_sid, request=self.request)
+            if self.is_sid_modified:
+                await self.session._del_sess(self.prev_sid, request=self.request)
             await self.session._post_sess(self.sid, self.store, request=self.request)
             self.is_modified = False
-        lock_keeper.release(self.init_sid)
-        self.init_sid = None
+        if self.is_sid_modified:
+            self.is_sid_modified = False
+            lock_keeper.release(self.prev_sid)
+            self.prev_sid = None
+        else:
+            lock_keeper.release(self.sid)

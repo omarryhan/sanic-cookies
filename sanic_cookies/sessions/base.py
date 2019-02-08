@@ -3,6 +3,7 @@ from collections import deque
 
 import ujson
 from ..models import SessionDict, Object
+from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
 
 class BaseSession:
@@ -115,6 +116,21 @@ class BaseSession:
         else:
             return request[self.session_name].sid
 
+    @property
+    def _is_static_master_interface(self):
+        # Static interfaces don't change their SID automatically when the value of their underlying store changes (Unlike Fernet, which always changes when modified) 
+        return True in tuple(map(lambda interface: isinstance(self.master_interface, interface), STATIC_SID_COOKIE_INTERFACES))
+
+    def refresh_sid(self, sess):
+        '''
+        Use this whenever your app does any user-privelage escalation to avoid session fixation attacks 
+        Use this method with an async ctx manager 
+        You don't have to use this with Authsess.login_user. Its already being handled for you
+        '''
+        if self._is_static_master_interface:
+            sess.sid = self.master_interface.sid_factory()
+        return sess
+
     #### -------------- Loading --------------- ####
 
     async def _open_sess(self, request):
@@ -145,17 +161,28 @@ class BaseSession:
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         session_dict = request.get(self.session_name)
         if session_dict is None or (not session_dict.store and session_dict.is_modified): 
-            # if it was purposefully deleted or set to None
+            # if it was purposefully deleted or set to None  # Not recommended use sess.reset() instead
             await self._del_sess(self._get_sid(request, external=True), request=request)
             self._del_cookie(request, response)
-        elif not session_dict.store:
+        elif not session_dict.store:  # and not modified
             return
-        else:
+        else:  # else if theres a session object
             external_sid = self._get_sid(request, external=True)
             internal_sid = self._get_sid(request, external=False)
-            if (external_sid != internal_sid) or session_dict.is_modified:
+            sid_changed = external_sid != internal_sid
+            session_dict_changed = session_dict.is_modified
+            if sid_changed or session_dict_changed:
                 await self._post_sess(internal_sid, request[self.session_name].store, request=request, response=response)
+                if not self._is_static_master_interface:  # Did the SID change with self._post_sess?
+                    internal_sid = self._get_sid(request, external=False)
                 await self._set_cookie(internal_sid, request, response)
+                # delete old sid
+                # This step should be kept after _post_sess & _set_cookie. Putting it before them
+                # will break incookie sid storage by overwriting the "new" sid.
+                if external_sid is not None and sid_changed and session_dict.is_sid_modified:
+                    # if sid was changed using an async ctx manager then there's no need for this step. hence the `and sid.is_sid_modified`
+                    # See SessionDict.__aexit__
+                    await self._del_sess(external_sid, request=request, response=response)
 
     #### ------------ Cookie Munching ------------- ####
 

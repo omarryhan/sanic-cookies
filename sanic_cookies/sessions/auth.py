@@ -6,7 +6,6 @@ from sanic.exceptions import abort
 
 from .base import BaseSession
 from ..models import SessionDict
-from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
 
 __all__ = ['AuthSession', 'login_required']
@@ -17,6 +16,7 @@ def default_no_auth_handler(request, *args, **kwargs):
 
 _REMEMBER_ME_KEY = '_remember_me'
 _DURATION_KEY = '_override_expiry'
+_EXEMPT_METHODS = set(['OPTIONS'])
 
 
 def login_required(no_auth_handler=None, session_name='auth_session'):
@@ -24,8 +24,7 @@ def login_required(no_auth_handler=None, session_name='auth_session'):
         @wraps(fn)
         async def innerwrap(request, *args, **kwargs):
             self = getattr(request.app.exts, session_name)
-            user = await self.current_user(request)
-            if user is None:
+            if request.method not in _EXEMPT_METHODS and await self.current_user(request) is None:
                 return_function = no_auth_handler or default_no_auth_handler
             else:
                 return_function = fn
@@ -118,16 +117,9 @@ class AuthSession(BaseSession):
             reset_store: Whether or not to reset the session dict before adding a current user
                          Defaults to persisting data from anonymous user
         '''
-        # https://bit.ly/1UZD8Q1 (Change SID upon privelage escelation. OWASP Privelage Escalation Recommendations)
-        is_static_interface = tuple(map(lambda interface: isinstance(self.master_interface, interface), STATIC_SID_COOKIE_INTERFACES))
-        if True in is_static_interface:
-            new_sid = self.master_interface.sid_factory()
-        else:
-            new_sid = None
         async with request[self.session_name] as sess:
-            ## Delete previous SID upon privelage escelation
-            if new_sid:
-                sess.sid = new_sid
+            ## Delete previous SID upon privelage escelation to avoid session fixation attacks
+            sess = self.refresh_sid(sess)
             if reset_store is True:
                 sess.reset()
             sess[self.auth_key] = user
@@ -147,8 +139,8 @@ class AuthSession(BaseSession):
     # Overriding (to set remember_me)
     async def _set_cookie_expiry(self, request, response):
         async with request[self.session_name] as sess:
-            if sess.get(_REMEMBER_ME_KEY) is False:
-                session_cookie = True
+            if _REMEMBER_ME_KEY in sess:
+                session_cookie = sess[_REMEMBER_ME_KEY]
             else:
                 session_cookie = self.session_cookie
         if not session_cookie:
@@ -157,8 +149,10 @@ class AuthSession(BaseSession):
         return request, response
 
     async def logout_user(self, request, logout_anon=True):
+        ''' logout_anon: Set to false to delete the authenticated session only when
+        there's a logged in user '''
         async with request[self.session_name] as sess:
-            if logout_anon or (not logoutanon and self.current_user):
+            if logout_anon or (not logout_anon and sess.get(self.auth_key)):
                 sess.reset()
 
     async def current_user(self, request):
