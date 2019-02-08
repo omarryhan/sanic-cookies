@@ -6,6 +6,7 @@ from sanic.exceptions import abort
 
 from .base import BaseSession
 from ..models import SessionDict
+from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
 
 __all__ = ['AuthSession', 'login_required']
@@ -19,8 +20,6 @@ _DURATION_KEY = '_override_expiry'
 
 
 def login_required(no_auth_handler=None, session_name='auth_session'):
-    ''' No auth handler overrides self.no_auth_handler 
-    Don't pass _self any arguments '''
     def wrapped(fn):
         @wraps(fn)
         async def innerwrap(request, *args, **kwargs):
@@ -111,13 +110,24 @@ class AuthSession(BaseSession):
 
     async def login_user(self, request, user, duration=None, remember_me=True, reset_store=True):
         '''
+            Don't use this method with an async context manager. Just await it
+ 
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
             remember_me: Whether or not this user session will be a session_cookie
             reset_store: Whether or not to reset the session dict before adding a current user
                          Defaults to persisting data from anonymous user
         '''
+        # https://bit.ly/1UZD8Q1 (Change SID upon privelage escelation. OWASP Privelage Escalation Recommendations)
+        is_static_interface = tuple(map(lambda interface: isinstance(self.master_interface, interface), STATIC_SID_COOKIE_INTERFACES))
+        if True in is_static_interface:
+            new_sid = self.master_interface.sid_factory()
+        else:
+            new_sid = None
         async with request[self.session_name] as sess:
+            ## Delete previous SID upon privelage escelation
+            if new_sid:
+                sess.sid = new_sid
             if reset_store is True:
                 sess.reset()
             sess[self.auth_key] = user

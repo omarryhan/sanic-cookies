@@ -77,6 +77,7 @@ class SessionDict(abc.MutableMapping):
         self.session = session
         self.warn_lock = warn_lock
         self.is_modified = False
+        self.init_sid = None
         self.request = request
 
     def _warn_if_not_locked(self):
@@ -145,14 +146,17 @@ class SessionDict(abc.MutableMapping):
             warnings.warn(
                 *UNLOCKED_LOCKED_ACCESS_MIX_MSG
             )
+        self.init_sid = self.sid
         await lock_keeper.acquire(self.sid)
-        assert self.is_locked() is True
         self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
     async def __aexit__(self, *args):
+        is_sid_changed = self.init_sid != self.sid
         if self.is_modified:
+            if is_sid_changed:
+                await self.session._del_sess(self.init_sid, request=self.request)
             await self.session._post_sess(self.sid, self.store, request=self.request)
             self.is_modified = False
-        lock_keeper.release(self.sid)
-        assert self.is_locked() is False
+        lock_keeper.release(self.init_sid)
+        self.init_sid = None

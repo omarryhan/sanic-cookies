@@ -62,12 +62,10 @@ class BaseSession:
         setattr(app.exts, self.session_name, self)
 
         app.register_middleware(
-            lambda request: self._open_sess(self, request), 
-            attach_to='request'
+            self._open_sess, attach_to='request'
         )
         app.register_middleware(
-            lambda request, response: self._close_sess(self, request, response), 
-            attach_to='response'
+            self._close_sess, attach_to='response'
         )
 
     #### ------------ Interface management ------------- ####
@@ -119,7 +117,6 @@ class BaseSession:
 
     #### -------------- Loading --------------- ####
 
-    @staticmethod
     async def _open_sess(self, request):
         ''' Sets a session_dict to request '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
@@ -132,6 +129,8 @@ class BaseSession:
             sid = self.master_interface.sid_factory()
         else:
             initial = await self._fetch_sess(sid, request=request)
+        if initial is None:
+            sid = self.master_interface.sid_factory()  # Strict sid loading  https://bit.ly/2tcOUwz
         return self.store_factory(
             initial=initial,
             sid=sid,
@@ -142,22 +141,21 @@ class BaseSession:
 
     #### ------------ Saving --------------- ####
 
-    @staticmethod
     async def _close_sess(self, request, response):
-        ''' Saves request[session_dict] if set to none or deleted:
-        Then should cascade these changes to the response and self.interfaces '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         session_dict = request.get(self.session_name)
-        if session_dict is not None:
+        if session_dict is None or (not session_dict.store and session_dict.is_modified): 
+            # if it was purposefully deleted or set to None
+            await self._del_sess(self._get_sid(request, external=True), request=request)
+            self._del_cookie(request, response)
+        elif not session_dict.store:
+            return
+        else:
             external_sid = self._get_sid(request, external=True)
             internal_sid = self._get_sid(request, external=False)
             if (external_sid != internal_sid) or session_dict.is_modified:
                 await self._post_sess(internal_sid, request[self.session_name].store, request=request, response=response)
-                await self._set_cookie_from_request(request, response)
-        else:
-            # if it was purposefully deleted or set to None
-            await self._del_sess(self._get_sid(request, external=True), request=request)
-            self._del_cookie(request, response)
+                await self._set_cookie(internal_sid, request, response)
 
     #### ------------ Cookie Munching ------------- ####
 
@@ -167,8 +165,8 @@ class BaseSession:
             response.cookies[self.cookie_name]['max-age'] = self.expiry
         return request, response
 
-    async def _set_cookie_from_request(self, request, response):
-        response.cookies[self.cookie_name] = request[self.session_name].sid
+    async def _set_cookie(self, sid, request, response):
+        response.cookies[self.cookie_name] = sid
         request, response = await self._set_cookie_expiry(request, response)
         for name, value in {
             'httponly': self.httponly,
