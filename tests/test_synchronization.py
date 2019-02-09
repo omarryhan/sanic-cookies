@@ -9,7 +9,7 @@ import pytest
 
 from sanic_cookies.models import SessionDict, lock_keeper, LockKeeper
 from sanic_cookies import Session, InMemory
-from .common import MockApp, MockInterface, MockSession
+from .common import MockApp, MockInterface, MockSession, MockRequest
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,7 @@ async def test_warns_with_unlocked_access(Session, Interface):
 async def test_only_saves_with_ctx(Session, Interface):
     sess_man = Session(master_interface=Interface())    
     SID = 'another_sid'
-    session_dict = SessionDict(sid=SID, session=sess_man, warn_lock=False)
+    session_dict = SessionDict(sid=SID, session=sess_man, request=MockRequest(), warn_lock=False)
 
     session_dict['foo'] = 'bar'
 

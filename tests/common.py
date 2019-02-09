@@ -40,14 +40,15 @@ class MockAuthSession(AuthSession):
         super().__init__(app=app, master_interface=master_interface, *args, **kwargs)
 
 class MockSessionDict(SessionDict):
-    def __init__(self, session=MockSession(), *args, **kwargs):
-        super().__init__(session=session, *args, **kwargs)
+    def __init__(self, session=MockSession(), request=None, *args, **kwargs):
+        super().__init__(session=session, request=request, *args, **kwargs)
     
 class MockRequest:
     def __init__(self, method='GET', session_dict=MockSessionDict(), app=MockApp()):
         setattr(self, session_dict.session.session_name, session_dict)
         self.app = app
         self.method = method
+        self.cookies = {}
 
     def __getitem__(self, k):
         return getattr(self, k)

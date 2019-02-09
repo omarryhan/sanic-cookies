@@ -10,6 +10,7 @@ pytest-mock = "*"
 pytest-cov = "*"
 async-timeout = "*"
 flake8 = "*"
+pylint = "*"
 
 [packages]
 ujson = "*"

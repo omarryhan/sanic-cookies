@@ -1,9 +1,6 @@
-import ujson
 import warnings
 from asyncio import Lock
 from collections import abc
-
-from cryptography.fernet import Fernet, InvalidToken
 
 
 UNLOCKED_WARNING_MSG = '''
@@ -42,7 +39,7 @@ UNLOCKED_LOCKED_ACCESS_MIX_MSG = '''
             sess['bar'] = 'baz'
 
     If you're seeing this warning message, it means that either you or a library you're using
-    has tried to access the session object without a context manager then you discarded the changes 
+    has tried to modify the session object without a context manager then you discarded the changes 
     that have been made by *correctly* using the async context manager
 ''', RuntimeWarning
 
@@ -64,31 +61,35 @@ class LockKeeper:
     def release(self, sid):
         existing_lock = self.acquired_locks.get(sid)
         if existing_lock:
-            #existing_lock.release()
             del self.acquired_locks[sid]
 
 lock_keeper = LockKeeper()
 
 class SessionDict(abc.MutableMapping):
-
     def __init__(self, initial=None, sid=None, session=None, warn_lock=True, request=None):
         self.store = initial or {}
         self._sid = sid
         self.session = session
         self.warn_lock = warn_lock
-        self.is_modified = False
-        self.is_sid_modified = False
-        self.prev_sid = None
         self.request = request
+        self.is_modified = False
+        self._prev_sid = []
+        self.locked_key = None
+        self._should_set_cookie = False
+        self._should_del_cookie = False
 
     @property
     def sid(self):
         return self._sid
 
+    @property
+    def is_sid_modified(self):
+        return bool(self._prev_sid)
+
     @sid.setter
     def sid(self, val):
-        self.prev_sid = self._sid
-        self.is_sid_modified = True
+        if self._sid is not None:
+            self._prev_sid.append(self._sid)
         self._sid = val
 
     def _warn_if_not_locked(self):
@@ -160,19 +161,17 @@ class SessionDict(abc.MutableMapping):
             warnings.warn(
                 *UNLOCKED_LOCKED_ACCESS_MIX_MSG
             )
-        await lock_keeper.acquire(self.sid)
+        # While we can always await lock_keeper.acquire(self.sid)
+        # self.locked_key will be a better choice to accurately 
+        # keep track of the sid that is locked in case sid (and _prev_sid)  
+        # is changed in ctx
+        self.locked_key = self.sid
+        await lock_keeper.acquire(self.locked_key)
         self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
     async def __aexit__(self, *args):
-        if self.is_modified:
-            if self.is_sid_modified:
-                await self.session._del_sess(self.prev_sid, request=self.request)
-            await self.session._post_sess(self.sid, self.store, request=self.request)
-            self.is_modified = False
-        if self.is_sid_modified:
-            self.is_sid_modified = False
-            lock_keeper.release(self.prev_sid)
-            self.prev_sid = None
-        else:
-            lock_keeper.release(self.sid)
+        await self.session._save_sess(self)
+        lock_keeper.release(self.locked_key)
+        self.locked_key = None
+

@@ -107,23 +107,24 @@ class AuthSession(BaseSession):
             store_factory=store_factory,
         )
 
-    async def login_user(self, request, user, duration=None, remember_me=True, reset_store=True):
+    async def login_user(self, request, user, duration=None, remember_me=None, reset_session=True):
         '''
             Don't use this method with an async context manager. Just await it
  
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
-            remember_me: Whether or not this user session will be a session_cookie
-            reset_store: Whether or not to reset the session dict before adding a current user
+            remember_me (bool): Whether or not this user session will be a session_cookie. Defaults to self.session_cookie
+            reset_session: Whether or not to reset the session dict before adding a current user
                          Defaults to persisting data from anonymous user
         '''
         async with request[self.session_name] as sess:
             ## Delete previous SID upon privelage escelation to avoid session fixation attacks
             sess = self.refresh_sid(sess)
-            if reset_store is True:
+            if reset_session is True:
                 sess.reset()
             sess[self.auth_key] = user
-            sess[_REMEMBER_ME_KEY] = remember_me
+            if isinstance(remember_me, bool):
+                sess[_REMEMBER_ME_KEY] = remember_me
             if isinstance(duration, int):
                 sess[_DURATION_KEY] = duration
 

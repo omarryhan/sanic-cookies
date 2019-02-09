@@ -3,15 +3,13 @@ from cryptography.fernet import Fernet, InvalidToken
 
 class InCookieEnc:
     '''
-        Encrypted in cookie storage
-
-        EXPERIMENTAL (Use under your own discretion)
-        -------------
+        Encrypted in-cookie storage
 
         key e.g. cryptography.fernet.Fernet.generate_key()
         
-        Always use this interface alone without any additional interfaces as it will mess things up
-        Just make a new Session object and set this as the master interface and none else
+        Always use this interface alone without any additional interfaces.
+        
+        If in doubt, instantiate a new Session object and set this as the master interface and none else
     '''
     def __init__(self, key, encoder=ujson.dumps, decoder=ujson.loads):  # pragma: no cover
         self.fernet = Fernet(key)
@@ -50,7 +48,6 @@ class InCookieEnc:
         return self._encrypt({})
 
     async def fetch(self, sid, expiry, request, cookie_name):
-        sid = request.cookies.get(cookie_name)
         if sid is not None:
             return self._decrypt(sid, expiry)
         else:
@@ -58,6 +55,12 @@ class InCookieEnc:
 
     async def store(self, sid, expiry, val, request, cookie_name, session_name):
         request[session_name].sid = self._encrypt(val)
+        # Shouldn't set is_sid_modified, else it will infinitely loop
+        if request[session_name]._prev_sid:
+            request[session_name]._prev_sid.pop()
 
     async def delete(self, sid, request, cookie_name, session_name):
         request[session_name].sid = self.sid_factory()
+        # Shouldn't set is_sid_modified, else it will infinitely loop
+        if request[session_name]._prev_sid:
+            request[session_name]._prev_sid.pop()

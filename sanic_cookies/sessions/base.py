@@ -123,9 +123,11 @@ class BaseSession:
 
     def refresh_sid(self, sess):
         '''
-        Use this whenever your app does any user-privelage escalation to avoid session fixation attacks 
-        Use this method with an async ctx manager 
-        You don't have to use this with Authsess.login_user. Its already being handled for you
+        Important:
+        
+            - Use this whenever your app does any user-privelage escalation to avoid session fixation attacks 
+            - Use this method with an async ctx manager 
+            - You don't have to use this with Authsess.login_user. Its already being handled for you
         '''
         if self._is_static_master_interface:
             sess.sid = self.master_interface.sid_factory()
@@ -136,9 +138,6 @@ class BaseSession:
     async def _open_sess(self, request):
         ''' Sets a session_dict to request '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
-        request[self.session_name] = await self._load_sess(request)
-
-    async def _load_sess(self, request):
         sid = self._get_sid(request, external=True)
         initial = None
         if not sid:
@@ -147,7 +146,7 @@ class BaseSession:
             initial = await self._fetch_sess(sid, request=request)
         if initial is None:
             sid = self.master_interface.sid_factory()  # Strict sid loading  https://bit.ly/2tcOUwz
-        return self.store_factory(
+        request[self.session_name] = self.store_factory(
             initial=initial,
             sid=sid,
             session=self,
@@ -160,29 +159,44 @@ class BaseSession:
     async def _close_sess(self, request, response):
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         session_dict = request.get(self.session_name)
-        if session_dict is None or (not session_dict.store and session_dict.is_modified): 
-            # if it was purposefully deleted or set to None  # Not recommended use sess.reset() instead
+        await self._save_sess(session_dict, request, response)
+
+    async def _save_sess(self, session_dict, request=None, response=None):
+        if session_dict is None:
             await self._del_sess(self._get_sid(request, external=True), request=request)
-            self._del_cookie(request, response)
-        elif not session_dict.store:  # and not modified
-            return
-        else:  # else if theres a session object
-            external_sid = self._get_sid(request, external=True)
-            internal_sid = self._get_sid(request, external=False)
-            sid_changed = external_sid != internal_sid
-            session_dict_changed = session_dict.is_modified
-            if sid_changed or session_dict_changed:
-                await self._post_sess(internal_sid, request[self.session_name].store, request=request, response=response)
-                if not self._is_static_master_interface:  # Did the SID change with self._post_sess?
-                    internal_sid = self._get_sid(request, external=False)
-                await self._set_cookie(internal_sid, request, response)
-                # delete old sid
-                # This step should be kept after _post_sess & _set_cookie. Putting it before them
-                # will break incookie sid storage by overwriting the "new" sid.
-                if external_sid is not None and sid_changed and session_dict.is_sid_modified:
-                    # if sid was changed using an async ctx manager then there's no need for this step. hence the `and sid.is_sid_modified`
-                    # See SessionDict.__aexit__
-                    await self._del_sess(external_sid, request=request, response=response)
+            if response is not None:
+                self._del_cookie(request, response)
+        else:
+            request = session_dict.request or request
+
+            # Handle SID modified
+            if session_dict.is_sid_modified:
+                [await self._del_sess(_sid, request=session_dict.request) for _sid in session_dict._prev_sid]
+                session_dict._prev_sid = []
+                # Shouldn't set cookie here, unless is_modified (which will be checked below)
+            
+            # Handle Session dict store modified
+            if not session_dict.store and session_dict.is_modified:
+                await self._del_sess(session_dict.sid, request)
+                session_dict.is_modified = False
+                session_dict._should_del_cookie = True
+
+            elif not session_dict.store and not session_dict.is_modified:
+                return
+
+            else:
+                if session_dict.is_modified:
+                    await self._post_sess(session_dict.sid, session_dict.store, request=request)
+                    session_dict.is_modified = False
+                    session_dict._should_set_cookie = True
+
+            if session_dict._should_del_cookie is True:
+                if response is not None:
+                    self._del_cookie(request, response)
+
+            elif session_dict._should_set_cookie is True:
+                if response is not None:
+                    await self._set_cookie(session_dict.sid, request, response)
 
     #### ------------ Cookie Munching ------------- ####
 
