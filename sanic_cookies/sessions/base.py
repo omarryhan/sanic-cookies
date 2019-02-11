@@ -167,7 +167,7 @@ class BaseSession:
             if response is not None:
                 self._del_cookie(request, response)
         else:
-            request = session_dict.request or request
+            request = request or session_dict.request
 
             # Handle SID modified
             if session_dict.is_sid_modified:
@@ -181,22 +181,17 @@ class BaseSession:
                 session_dict.is_modified = False
                 session_dict._should_del_cookie = True
 
-            elif not session_dict.store and not session_dict.is_modified:
-                return
+            elif session_dict.is_modified:
+                await self._post_sess(session_dict.sid, session_dict.store, request=request)
+                session_dict.is_modified = False
+                session_dict._should_set_cookie = True
 
-            else:
-                if session_dict.is_modified:
-                    await self._post_sess(session_dict.sid, session_dict.store, request=request)
-                    session_dict.is_modified = False
-                    session_dict._should_set_cookie = True
+            if response is not None:
+                if session_dict._should_del_cookie is True:
+                        self._del_cookie(request, response)
 
-            if session_dict._should_del_cookie is True:
-                if response is not None:
-                    self._del_cookie(request, response)
-
-            elif session_dict._should_set_cookie is True:
-                if response is not None:
-                    await self._set_cookie(session_dict.sid, request, response)
+                elif session_dict._should_set_cookie is True:
+                        await self._set_cookie(session_dict.sid, request, response)
 
     #### ------------ Cookie Munching ------------- ####
 
