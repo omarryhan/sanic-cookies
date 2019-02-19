@@ -93,7 +93,7 @@ class SessionDict(abc.MutableMapping):
         self._sid = val
 
     def _warn_if_not_locked(self):
-        if self.is_locked() is not True and self.warn_lock is True:
+        if self._is_locked() is not True and self.warn_lock is True:
             warnings.warn(*UNLOCKED_WARNING_MSG)
 
     def __getitem__(self, key):  # pragma: no cover
@@ -150,7 +150,15 @@ class SessionDict(abc.MutableMapping):
             self.store = {}
             self.is_modified = True
 
-    def is_locked(self):
+    def _is_locked(self):  # used by async ctx man
+        ''' Check if there's a locked key from this session dict '''
+        if self.locked_key in lock_keeper.acquired_locks:
+            return lock_keeper.acquired_locks[self.locked_key].locked()
+        else:
+            return False
+
+    def is_locked(self):  # should be used by user
+        ''' Checks if dict is ready to be locked (Checks sid vs _is_locked, checks self.locked_key) '''
         if self.sid in lock_keeper.acquired_locks:
             return lock_keeper.acquired_locks[self.sid].locked()
         else:
@@ -165,8 +173,8 @@ class SessionDict(abc.MutableMapping):
         # self.locked_key will be a better choice to accurately 
         # keep track of the sid that is locked in case sid (and _prev_sid)  
         # is changed in ctx
+        await lock_keeper.acquire(self.sid)
         self.locked_key = self.sid
-        await lock_keeper.acquire(self.locked_key)
         self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
