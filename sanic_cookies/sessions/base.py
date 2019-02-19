@@ -190,7 +190,8 @@ class BaseSession:
 
             # Handle SID modified
             if session_dict.is_sid_modified:
-                [await self._del_sess(_sid, request=session_dict.request) for _sid in session_dict._prev_sid]
+                _prev_sids = session_dict._prev_sid.copy()
+                [await self._del_sess(_sid, request=request) for _sid in _prev_sids]
                 session_dict._prev_sid = []
                 # Shouldn't set cookie here, unless is_modified (which will be checked below)
 

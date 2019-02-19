@@ -117,6 +117,8 @@ class AuthSession(BaseSession):
             reset_session: Whether or not to reset the session dict before adding a current user
                          Defaults to persisting data from anonymous user
         '''
+        if not user:
+            raise TypeError('user must be a truthy value, not: "{}"'.format(user))
         async with request[self.session_name] as sess:
             ## Delete previous SID upon privelage escelation to avoid session fixation attacks
             sess = self.refresh_sid(sess)
