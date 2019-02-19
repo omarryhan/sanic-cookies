@@ -143,6 +143,25 @@ class BaseSession:
         if not sid:
             sid = self.master_interface.sid_factory()
         else:
+            # TODO: Find a way to optimize session fetching
+            # Instead of fetching a session twice, once at the beggining of a request
+            # and another when accessing the session with an async ctx manager (locking mechanism),
+            # consider adding an "initial_fetch" flag that when set to False, will not fetch
+            # the session at request start, but will only fetch it when called by the async ctx man
+            #
+            # The catch:
+            # This can be challenging with the current design of the lib, mainly because:
+            # In order to have a request['session'] object we must have an sid,
+            # and to have an SID, we must check if it's a valid one, and to check if it's a valid one we have to
+            # either have an SID format checker (e.g. UUID format checker, fernet decryptor (also validates sig.))
+            # or to actually try and fetch the session dict and see if there's a matching session strored. Maybe both??.
+            # If we're going to validate the SID using the second method, then we might as well set it to the request rendering
+            # this optimization effort useless.
+            # A better way that would allow implementing such optimization with ease is to move the session's async
+            # ctx manager to this object instead of the session dict. This would however make it harder for 3rd party 
+            # libs to access the session dict
+            # and also would make it even harder to have to maintain the current API where you can
+            # access the session object via request['session'] at request start
             initial = await self._fetch_sess(sid, request=request)
         if initial is None:
             sid = self.master_interface.sid_factory()  # Strict sid loading  https://bit.ly/2tcOUwz
@@ -165,7 +184,7 @@ class BaseSession:
         if session_dict is None:
             await self._del_sess(self._get_sid(request, external=True), request=request)
             if response is not None:
-                self._del_cookie(request, response)
+                self._del_cookie(response)
         else:
             request = request or session_dict.request
 
@@ -174,7 +193,7 @@ class BaseSession:
                 [await self._del_sess(_sid, request=session_dict.request) for _sid in session_dict._prev_sid]
                 session_dict._prev_sid = []
                 # Shouldn't set cookie here, unless is_modified (which will be checked below)
-            
+
             # Handle Session dict store modified
             if not session_dict.store and session_dict.is_modified:
                 await self._del_sess(session_dict.sid, request)
@@ -188,10 +207,10 @@ class BaseSession:
 
             if response is not None:
                 if session_dict._should_del_cookie is True:
-                        self._del_cookie(request, response)
+                    self._del_cookie(response)
 
                 elif session_dict._should_set_cookie is True:
-                        await self._set_cookie(session_dict.sid, request, response)
+                    await self._set_cookie(session_dict.sid, request, response)
 
     #### ------------ Cookie Munching ------------- ####
 
@@ -215,12 +234,11 @@ class BaseSession:
             if value is not None:
                 response.cookies[self.cookie_name][name] = value
 
-    def _del_cookie(self, request, response):
-        sid = self._get_sid(request, external=True)
-        if sid:
-            response.cookies[self.cookie_name] = sid
-            response.cookies[self.cookie_name]['expires'] = 0
-            response.cookies[self.cookie_name]['max-age'] = 0
+    def _del_cookie(self, response):
+        try:
+            del response.cookies[self.cookie_name]
+        except KeyError:
+            pass
 
 class Session(BaseSession):
     '''

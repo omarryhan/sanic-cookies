@@ -25,8 +25,11 @@ class ExpiringDict(dict):
         return val
 
     def delete(self, key):
-        del self[key]
-        del self.expiry_times[key]
+        try:
+            del self[key]
+            del self.expiry_times[key]
+        except KeyError:
+            return
 
 class InMemory:
     '''
@@ -68,10 +71,6 @@ class InMemory:
         if val is not None:
             return self.decoder(val)
 
-    async def delete(self, sid, **kwargs):
-        if sid in self._store:
-            self._store.delete(self.prefix + sid)
-
     async def store(self, sid, expiry, val, **kwargs):
         if val is not None:
             val = self.encoder(val)
@@ -80,3 +79,6 @@ class InMemory:
                 expiry,
                 val
             )
+
+    async def delete(self, sid, **kwargs):
+        self._store.delete(self.prefix + sid)
