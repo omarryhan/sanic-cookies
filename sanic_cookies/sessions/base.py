@@ -138,40 +138,52 @@ class BaseSession:
     async def _open_sess(self, request):
         ''' Sets a session_dict to request '''
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
+        # TODO: Find a way to optimize session fetching
+        # Instead of fetching a session twice, once at the beggining of a request
+        # and another when accessing the session with an async ctx manager (locking mechanism),
+        # consider adding an "initial_fetch" flag that when set to False, will not fetch
+        # the session at request start, but will only fetch it when called by the async ctx man
+        #
+        # The catch:
+        # This can be challenging with the current design of the lib, mainly because:
+        # In order to have a request['session'] object we must have an sid,
+        # and to have an SID, we must check if it's a valid one, and to check if it's a valid one we have to
+        # either have an SID format checker (e.g. UUID format checker, fernet decryptor (also validates sig.))
+        # or to actually try and fetch the session dict and see if there's a matching session strored. Maybe both??.
+        # If we're going to validate the SID using the second method, then we might as well set it to the request rendering
+        # this optimization effort useless.
+        # A better way that would allow implementing such optimization with ease is to move the session's async
+        # ctx manager to this object instead of the session dict. This would however make it harder for 3rd party 
+        # libs to access the session dict
+        # and also would make it even harder to have to maintain the current API where you can
+        # access the session object via request['session'] at request start
         sid = self._get_sid(request, external=True)
-        initial = None
         if not sid:
             sid = self.master_interface.sid_factory()
+            request[self.session_name] = self.store_factory(
+                sid=sid,
+                session=self,
+                warn_lock=self.warn_lock,
+                request=request
+            )
         else:
-            # TODO: Find a way to optimize session fetching
-            # Instead of fetching a session twice, once at the beggining of a request
-            # and another when accessing the session with an async ctx manager (locking mechanism),
-            # consider adding an "initial_fetch" flag that when set to False, will not fetch
-            # the session at request start, but will only fetch it when called by the async ctx man
-            #
-            # The catch:
-            # This can be challenging with the current design of the lib, mainly because:
-            # In order to have a request['session'] object we must have an sid,
-            # and to have an SID, we must check if it's a valid one, and to check if it's a valid one we have to
-            # either have an SID format checker (e.g. UUID format checker, fernet decryptor (also validates sig.))
-            # or to actually try and fetch the session dict and see if there's a matching session strored. Maybe both??.
-            # If we're going to validate the SID using the second method, then we might as well set it to the request rendering
-            # this optimization effort useless.
-            # A better way that would allow implementing such optimization with ease is to move the session's async
-            # ctx manager to this object instead of the session dict. This would however make it harder for 3rd party 
-            # libs to access the session dict
-            # and also would make it even harder to have to maintain the current API where you can
-            # access the session object via request['session'] at request start
             initial = await self._fetch_sess(sid, request=request)
-        if initial is None:
-            sid = self.master_interface.sid_factory()  # Strict sid loading  https://bit.ly/2tcOUwz
-        request[self.session_name] = self.store_factory(
-            initial=initial,
-            sid=sid,
-            session=self,
-            warn_lock=self.warn_lock,
-            request=request
-        )
+            if not initial:
+                sid = self.master_interface.sid_factory()
+                request[self.session_name] = self.store_factory(
+                    sid=sid,
+                    session=self,
+                    warn_lock=self.warn_lock,
+                    request=request
+                )
+            else:
+                request[self.session_name] = self.store_factory(
+                    initial=initial,
+                    sid=sid,
+                    session=self,
+                    warn_lock=self.warn_lock,
+                    request=request
+            )
 
     #### ------------ Saving --------------- ####
 
