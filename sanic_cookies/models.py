@@ -69,7 +69,7 @@ class SessionDict(abc.MutableMapping):
     def __init__(self, initial=None, sid=None, session=None, warn_lock=True, request=None):
         self.store = initial or {}
         self._sid = sid
-        self.session = session
+        self._session = session
         self.warn_lock = warn_lock
         self.request = request
         self.is_modified = False
@@ -98,17 +98,17 @@ class SessionDict(abc.MutableMapping):
 
     def __getitem__(self, key):  # pragma: no cover
         self._warn_if_not_locked()
-        return self.store[key.lower()]
+        return self.store[key]
 
     def __setitem__(self, key, value):  # pragma: no cover
         self._warn_if_not_locked()
         self.is_modified = True
-        self.store[key.lower()] = value
+        self.store[key] = value
 
     def __delitem__(self, key):  # pragma: no cover
         self._warn_if_not_locked()
         self.is_modified = True
-        del self.store[key.lower()]
+        del self.store[key]
 
     def __iter__(self):  # pragma: no cover
         return iter(self.store)
@@ -175,11 +175,11 @@ class SessionDict(abc.MutableMapping):
         # is changed in ctx
         await lock_keeper.acquire(self.sid)
         self.locked_key = self.sid
-        self.store = await self.session._fetch_sess(self.sid, request=self.request) or {}
+        self.store = await self._session._fetch_sess(self.sid, request=self.request) or {}
         return self
 
     async def __aexit__(self, *args):
-        await self.session._save_sess(self)
+        await self._session._save_sess(self)
         lock_keeper.release(self.locked_key)
         self.locked_key = None
 

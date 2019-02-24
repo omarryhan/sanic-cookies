@@ -45,7 +45,7 @@ class MockSessionDict(SessionDict):
     
 class MockRequest:
     def __init__(self, method='GET', session_dict=MockSessionDict(), app=MockApp()):
-        setattr(self, session_dict.session.session_name, session_dict)
+        setattr(self, session_dict._session.session_name, session_dict)
         self.app = app
         self.method = method
         self.cookies = {}
