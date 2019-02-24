@@ -21,7 +21,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 
     name='sanic_cookies',
-    version="0.3.5",
+    version="0.3.6",
     author='Omar Ryhan',
     author_email='omarryhan@gmail.com',
     license='GNU',
