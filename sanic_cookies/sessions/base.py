@@ -2,6 +2,7 @@ import time
 from collections import deque
 
 import ujson
+import datetime
 from ..models import SessionDict, Object
 from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
@@ -107,8 +108,9 @@ class BaseSession:
 
     @staticmethod
     def _calculate_expires(expiry):
-        expires = time.time() + expiry
-        return time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime(expires))
+        return datetime.datetime.utcnow() + datetime.timedelta(seconds=expiry)
+        #expires = time.time() + expiry
+        #return time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime(expires))
 
     def _get_sid(self, request, external=True):
         if external:
