@@ -1,8 +1,9 @@
 import time
+import datetime
 from collections import deque
 
 import ujson
-import datetime
+
 from ..models import SessionDict, Object
 from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
@@ -314,4 +315,3 @@ class Session(BaseSession):
             warn_lock=warn_lock,
             store_factory=store_factory,
         )
-
