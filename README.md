@@ -5,13 +5,13 @@
 
 # Sanic Cookies
 
-Code here is mostly borrowed from [sanic_session](https://github.com/xen/sanic_session).
+Much of the code here is borrowed from [sanic_session](https://github.com/xen/sanic_session).
 
 I wanted to make some changes that would break a big part of `sanic_session`'s API, so I decided to create this repo instead.
 
 Sanic cookies supports both client side and server side cookies.
 
-## Some of the main deviations from sanic_session are:
+## Main deviations from sanic_session are:
 
 1. Interfaces are only responsible for reading/writing the `session_dict`. Session management logic is handled by the session object
 2. No race conditions:

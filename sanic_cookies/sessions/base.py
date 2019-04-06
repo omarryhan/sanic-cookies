@@ -96,21 +96,36 @@ class BaseSession:
     #### ------------- Interface API -------------- ####
 
     async def _fetch_sess(self, sid, request=None):
-        return await self.master_interface.fetch(sid, expiry=self.expiry, request=request, cookie_name=self.cookie_name)
+        return await self.master_interface.fetch(
+            sid, 
+            expiry=self.expiry, 
+            request=request, 
+            cookie_name=self.cookie_name
+        )
 
     async def _post_sess(self, sid, val, request=None, response=None):
-        [await interface.store(sid, self.expiry, val, request=request, cookie_name=self.cookie_name, session_name=self.session_name) for interface in self.interfaces]
+        [await interface.store(
+            sid, 
+            self.expiry, 
+            val, 
+            request=request, 
+            cookie_name=self.cookie_name, 
+            session_name=self.session_name
+        ) for interface in self.interfaces]
 
     async def _del_sess(self, sid, request=None, response=None):
-        [await interface.delete(sid, request=request, cookie_name=self.cookie_name, session_name=self.session_name) for interface in self.interfaces]
+        [await interface.delete(
+            sid, 
+            request=request, 
+            cookie_name=self.cookie_name, 
+            session_name=self.session_name
+        ) for interface in self.interfaces]
 
     #### ------------- Helpers ------------ ####
 
     @staticmethod
     def _calculate_expires(expiry):
         return datetime.datetime.utcnow() + datetime.timedelta(seconds=expiry)
-        #expires = time.time() + expiry
-        #return time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime(expires))
 
     def _get_sid(self, request, external=True):
         if external:
@@ -120,8 +135,12 @@ class BaseSession:
 
     @property
     def _is_static_master_interface(self):
-        # Static interfaces don't change their SID automatically when the value of their underlying store changes (Unlike Fernet, which always changes when modified) 
-        return True in tuple(map(lambda interface: isinstance(self.master_interface, interface), STATIC_SID_COOKIE_INTERFACES))
+        # Static interfaces don't change their SID automatically when the
+        # value of their underlying store changes (Unlike Fernet, which always changes when modified) 
+        return True in tuple(map(lambda interface: isinstance(
+            self.master_interface, 
+            interface
+        ), STATIC_SID_COOKIE_INTERFACES))
 
     def refresh_sid(self, sess):
         '''

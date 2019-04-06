@@ -8,7 +8,14 @@ class Aioredis:  # pragma: no cover
             e.g. json, ujson, pickle, cpickle, bson, msgpack etc..
             Default ujson
     '''
-    def __init__(self, client, prefix='session:', encoder=ujson.dumps, decoder=ujson.loads, sid_factory=lambda: uuid.uuid4().hex):
+    def __init__(
+        self, 
+        client, 
+        prefix='session:', 
+        encoder=ujson.dumps, 
+        decoder=ujson.loads, 
+        sid_factory=lambda: uuid.uuid4().hex
+    ):
         self.client = client
         self.prefix = prefix
         self.encoder = encoder

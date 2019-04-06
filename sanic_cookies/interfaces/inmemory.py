@@ -38,7 +38,15 @@ class InMemory:
             e.g. json, ujson, pickle, cpickle, bson, msgpack etc..
             Default ujson
     '''
-    def __init__(self, store=ExpiringDict, prefix='session:', cleanup_interval=60*60*1, encoder=ujson.dumps, decoder=ujson.loads, sid_factory=lambda: uuid.uuid4().hex):
+    def __init__(
+        self, 
+        store=ExpiringDict, 
+        prefix='session:', 
+        cleanup_interval=60*60*1, 
+        encoder=ujson.dumps, 
+        decoder=ujson.loads, 
+        sid_factory=lambda: uuid.uuid4().hex
+    ):
         self.prefix = prefix
         self._store = store()
         self.cleanup_interval = cleanup_interval
