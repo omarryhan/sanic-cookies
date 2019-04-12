@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/7/70/Cookie.png" alt="Logo" width="400" height="400"/>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/70/Cookie.png" alt="Logo" width="250" height="250"/>
   <p align="center">
     <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square"></a>
     <a href="https://travis-ci.org/omarryhan/sanic-cookies"><img alt="Build Status" src="https://travis-ci.org/omarryhan/sanic-cookies.svg?branch=master"></a>
