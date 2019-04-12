@@ -188,7 +188,3 @@ Let's talk. Send me an email @ omarryhan@gmail.com
 **Litecoin:** MB5M3cE3jE4E8NwGCWoFjLvGqjDqPyyEJp
 
 **Paypal:** https://paypal.me/omarryhan
-
-## If enough people are interested, I can write some docs. Meanwhile, if you excuse me...
-
-![Gotta go fast!!](http://sd.keepcalm-o-matic.co.uk/i/gotta-go-fast-sanic-fast.png)
