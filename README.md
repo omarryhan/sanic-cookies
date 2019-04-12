@@ -1,6 +1,11 @@
 <p align="center">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/70/Cookie.png" alt="Logo" width="400" height="400"/>
+  <p align="center">
+    <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square"></a>
     <a href="https://travis-ci.org/omarryhan/sanic-cookies"><img alt="Build Status" src="https://travis-ci.org/omarryhan/sanic-cookies.svg?branch=master"></a>
-    <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-GNU-brightgreen.svg?style=flat-square"></a>
+    <a href="https://pepy.tech/badge/sanic-cookies"><img alt="Downloads" src="https://pepy.tech/badge/sanic-cookies"></a>
+    <a href="https://pepy.tech/badge/sanic-cookies/month"><img alt="Monthly Downloads" src="https://pepy.tech/badge/sanic-cookies/month"></a>
+  </p>
 </p>
 
 # Sanic Cookies
@@ -11,7 +16,7 @@ I wanted to make some changes that would break a big part of `sanic_session`'s A
 
 Sanic cookies supports both client side and server side cookies.
 
-## Main deviations from sanic_session are:
+## Main deviations from sanic_session are
 
 1. Interfaces are only responsible for reading/writing the `session_dict`. Session management logic is handled by the session object
 2. No race conditions:
@@ -33,6 +38,10 @@ Sanic cookies supports both client side and server side cookies.
 5. Encrypted client side cookies interface
 6. Ability to add more than one interface to the same session
 7. Authenticated Session implementation
+
+## Setup ⚙️
+
+    $ pip install sanic_cookies
 
 ## Quick Start
 
@@ -162,6 +171,24 @@ Following up on the previous example:
 2. SID factory (Default to uuid.uuid4)
 3. Session dict implementation
 
-**If enough people are interested, I can write some docs. Meanwhile, if you excuse me...**
+## Contact 📧
+
+Like my work? Have an exciting product and think we can work together?
+
+Let's talk. Send me an email @ omarryhan@gmail.com
+
+## Buy me a coffee ☕
+
+**Bitcoin:** 3NmywNKr1Lzo8gyNXFUnzvboziACpEa31z
+
+**Ethereum:** 0x1E1400C31Cd813685FE0f6D29E0F91c1Da4675aE
+
+**Bitcoin Cash:** qqzn7rsav6hr3zqcp4829s48hvsvjat4zq7j42wkxd
+
+**Litecoin:** MB5M3cE3jE4E8NwGCWoFjLvGqjDqPyyEJp
+
+**Paypal:** https://paypal.me/omarryhan
+
+## If enough people are interested, I can write some docs. Meanwhile, if you excuse me...
 
 ![Gotta go fast!!](http://sd.keepcalm-o-matic.co.uk/i/gotta-go-fast-sanic-fast.png)
