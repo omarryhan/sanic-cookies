@@ -1,5 +1,6 @@
 from .interfaces import (
     InMemory,
+    AsyncPG,
     Aioredis,
     InCookieEnc
 )
