@@ -46,6 +46,7 @@ Sanic cookies supports both client side and server side cookies.
 ## Quick Start
 
     from sanic_cookies import Session, InMemory
+    from sanic import Sanic
 
     interface = InMemory()
     app = Sanic()
@@ -69,6 +70,7 @@ Sanic cookies supports both client side and server side cookies.
 ### Running multiple interfaces
 
     from sanic_cookies import Session, InMemory, Aioredis
+    from sanic import Sanic
 
     inmem = InMemory()
     aioredis = AioRedis(aioredis_pool_instance)
@@ -89,6 +91,7 @@ Sanic cookies supports both client side and server side cookies.
 ### Running multiple sessions
 
     from sanic_cookies import Session, AuthSession, InMemory, InCookieEnc, AioRedis
+    from sanic import Sanic
 
     inmem = InMemory()
     aioredis = Aioredis(aioredis_pool_instance)
@@ -98,7 +101,8 @@ Sanic cookies supports both client side and server side cookies.
 
     incookie_session = Session(app, master_interface=incookie, session_name='incookiesess', cookie_name='INCOOKIE')
     generic_session = Session(app, master_interface=inmem, session_name='session', cookie_name='SESSION')
-    auth_session = AuthSession(app, master_interface=aioredis, session_name='auth_session', cookie_name='SECURE_SESSION', secure=True)
+    auth_session = AuthSession(app, master_interface=aioredis, session_name='auth_session', cookie_name='SECURE_SESSION')
+    # for production (HTTPs) set `secure=True` in your auth_session, but this will fail in local development
 
     @app.route('/')
     async def index(request):
@@ -115,8 +119,6 @@ Sanic cookies supports both client side and server side cookies.
 
 Following up on the previous example:
 
-    from sanic import response
-    from sanic.exceptions import abort
 
     from sanic_cookies import login_required
 
