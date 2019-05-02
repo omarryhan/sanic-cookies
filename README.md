@@ -73,11 +73,15 @@ Sanic cookies supports both client side and server side cookies.
     async def index(request):
         async with request['my_1st_session'] as sess:
             sess['foo'] = 'bar'
-            # At this point 'foo' = 'bar' is written both to the inmemory interface and the aioredis interface
+            # At this point 'foo' = 'bar' is written both to the inmemory
+            # interface and the aioredis interface
 
         async with request['my_1st_session'] as sess:
-            assert sess['foo'] == 'bar'  # When reading, your session will always read from the "master_interface" in that case it's the inmem interface
-        # Such pattern can be useful in many cases e.g. you want to share your session information with an analytics team
+            # When reading, your session will always read from the "master_interface"
+            # In that case it's the inmem interface
+            assert sess['foo'] == 'bar'
+        # Such pattern can be useful in many cases 
+        # e.g. you want to share your session information with an analytics team
 
 ### Running multiple sessions
 
@@ -90,10 +94,29 @@ Sanic cookies supports both client side and server side cookies.
 
     app = Sanic()
 
-    incookie_session = Session(app, master_interface=incookie, session_name='incookiesess', cookie_name='INCOOKIE')
-    generic_session = Session(app, master_interface=inmem, session_name='session', cookie_name='SESSION')
-    auth_session = AuthSession(app, master_interface=aioredis, session_name='auth_session', cookie_name='SECURE_SESSION')
-    # for production (HTTPs) set `secure=True` in your auth_session, but this will fail in local development
+    incookie_session = Session(
+        app,
+        master_interface=incookie,
+        session_name='incookiesess',
+        cookie_name='INCOOKIE'
+    )
+
+    generic_session = Session(
+        app,
+        master_interface=inmem,
+        session_name='session',
+        cookie_name='SESSION'
+    )
+
+    auth_session = AuthSession(
+        app,
+        master_interface=aioredis,
+        session_name='auth_session',
+        cookie_name='SECURE_SESSION'
+    )
+
+    # for production (HTTPs) set `secure=True` in your auth_session,
+    # but this will fail in local development
 
     @app.route('/')
     async def index(request):
@@ -118,10 +141,12 @@ Following up on the previous example:
         authorized_user = 123 
         authorized_user = {'user_id': 123, 'email': 'foo@bar.baz'}
         # both will work (Whatever is json serializble will)
-        # If you want to pickle an object simply change the default encoder&decoder in the interfaces plugged in to your AuthSession
+        # If you want to pickle an object simply change the default
+        # encoder&decoder in the interfaces plugged in to your AuthSession
 
         # 2. Login user
-        # Here we access the session object (not the session dict that is accessible from the request) from the app
+        # Here we access the session object
+        # (not the session dict that is accessible from the request) from the app
         await request.app.exts.auth_session.login_user(request, authorized_user)
 
         # 3. Use the session dict safely and exclusively for the logged in user
