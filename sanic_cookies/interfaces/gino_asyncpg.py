@@ -3,22 +3,7 @@ import ujson
 import uuid
 
 
-"""
-# Create table statement (run once before ever calling this code)
-TODO: move to SQLalchemy?
-
-CREATE TABLE IF NOT EXISTS sessions
-(
-    created_at timestamp without time zone NOT NULL,
-    expires_at timestamp without time zone,
-    sid character varying,
-    val character varying,
-    CONSTRAINT sessions_pkey PRIMARY KEY (sid)
-);
-"""
-
-
-class AsyncPG:  # pragma: no cover
+class GinoAsyncPG:  # pragma: no cover
     '''
         encoder & decoder:
 
@@ -53,7 +38,6 @@ class AsyncPG:  # pragma: no cover
         if val is not None:
             val = self.encoder(val)
             await self.client.scalar(
-                # Upsert using postgres 9.5+
                 'INSERT INTO sessions(created_at, sid, val, expires_at) VALUES(NOW(), $1, $2, $3) ON CONFLICT (sid) DO UPDATE SET val = EXCLUDED.val, expires_at = EXCLUDED.expires_at',  # noqa
                 sid,
                 val,

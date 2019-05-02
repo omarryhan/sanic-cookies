@@ -48,17 +48,8 @@ Sanic cookies supports both client side and server side cookies.
     from sanic_cookies import Session, InMemory
     from sanic import Sanic
 
-    interface = InMemory()
     app = Sanic()
-    Session(app, master_interface=interface)
-
-    # You can skip this part if you don't want scheduled interface cleanup
-    @app.listener('before_server_start')
-    def init_inmemory(app, loop):
-        interface.init()
-    @app.listener('after_server_stop')
-    def kill_inmemory(app, loop):
-        interface.kill()
+    Session(app, master_interface=InMemory())
 
     @app.route('/')
     async def handler(request):
@@ -119,7 +110,6 @@ Sanic cookies supports both client side and server side cookies.
 
 Following up on the previous example:
 
-
     from sanic_cookies import login_required
 
     @app.route('/login')
@@ -159,8 +149,60 @@ Following up on the previous example:
 ## Interfaces available
 
 1. In memory
+
+        from sanic_cookies import Session, InMemory
+        from sanic import Sanic
+
+        interface = InMemory()
+        app = Sanic()
+        Session(app, master_interface=interface)
+
+        # You can skip this part if you don't want scheduled interface cleanup
+        @app.listener('before_server_start')
+        def init_inmemory(app, loop):
+            interface.init()
+        @app.listener('after_server_stop')
+        def kill_inmemory(app, loop):
+            interface.kill()
+
+        @app.route('/')
+        async def handler(request):
+            async with request['session'] as sess:
+                sess['foo'] = 'bar'
+
 2. Aioredis
 3. Encrypted in-cookie (using the amazing cryptography.Fernet library)
+4. Gino-AsyncPG (Postgres 9.5+):
+
+    1. Manually create a table:
+
+            CREATE TABLE IF NOT EXISTS sessions
+            (
+                created_at timestamp without time zone NOT NULL,
+                expires_at timestamp without time zone,
+                sid character varying,
+                val character varying,
+                CONSTRAINT sessions_pkey PRIMARY KEY (sid)
+            );
+
+    2. Add the interface:
+
+            from sanic import Sanic
+            from gino.ext.sanic import Gino
+            from sanic_cookies import GinoAsyncPG
+
+            from something_secure import DB_SETTINGS
+
+            app = Sanic()
+            app.config.update(DB_SETTINGS)
+            db = Gino()
+            db.init_app(app)
+
+            interface = GinoAsyncPG(client=db)
+            auth_session = AuthSession(app, master_interface=interface)
+
+            if __name__ == '__main__':
+                app.run(host='127.0.0.1', port='8080')
 
 ## Sessions available
 

@@ -1,8 +1,8 @@
 from .interfaces import (
     InMemory,
-    AsyncPG,
+    GinoAsyncPG,
     Aioredis,
-    InCookieEnc
+    InCookieEnc,
 )
 
 from .models import (
