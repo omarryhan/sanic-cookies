@@ -9,7 +9,7 @@ from ..interfaces import STATIC_SID_COOKIE_INTERFACES
 
 
 class BaseSession:
-    '''
+    """
     Base Session
 
     Arguments:
@@ -22,23 +22,22 @@ class BaseSession:
             
                 - request[session_name] AND
                 - app.exts.{session_name}
-    '''
+    """
+
     def __init__(
         self,
         app,
         master_interface=None,  # Master read
-
-        cookie_name='SESSION',
+        cookie_name="SESSION",
         domain=None,
-        expiry=30*24*60*60,
+        expiry=30 * 24 * 60 * 60,
         httponly=None,
         secure=None,
         samesite=None,
         session_cookie=False,
         path=None,
         comment=None,
-
-        session_name='session',
+        session_name="session",
         warn_lock=True,
         store_factory=SessionDict,
     ):
@@ -55,29 +54,25 @@ class BaseSession:
         self.session_name = session_name
         self.warn_lock = warn_lock
         self.store_factory = store_factory
-        
+
         self.interfaces = deque()
         if master_interface is not None:
             self.interfaces.appendleft(master_interface)
 
-        if not hasattr(app, 'exts'):
+        if not hasattr(app, "exts"):
             app.exts = Object()
         setattr(app.exts, self.session_name, self)
 
-        app.register_middleware(
-            self._open_sess, attach_to='request'
-        )
-        app.register_middleware(
-            self._close_sess, attach_to='response'
-        )
+        app.register_middleware(self._open_sess, attach_to="request")
+        app.register_middleware(self._close_sess, attach_to="response")
 
     #### ------------ Interface management ------------- ####
 
     def add_interface(self, interface):
-        ''' 
+        """ 
         If a master_interface exists, any interface added here will only be written to 
         and will not be read from. Reading will only be done through the "master_interface" 
-        However if no master interface is set, adding an interface here will set it as one'''
+        However if no master interface is set, adding an interface here will set it as one"""
         self.interfaces.append(interface)
 
     def set_master_interface(self, interface, overwrite=True):
@@ -98,29 +93,32 @@ class BaseSession:
 
     async def _fetch_sess(self, sid, request=None):
         return await self.master_interface.fetch(
-            sid, 
-            expiry=self.expiry, 
-            request=request, 
-            cookie_name=self.cookie_name
+            sid, expiry=self.expiry, request=request, cookie_name=self.cookie_name
         )
 
     async def _post_sess(self, sid, val, request=None, response=None):
-        [await interface.store(
-            sid, 
-            self.expiry, 
-            val, 
-            request=request, 
-            cookie_name=self.cookie_name, 
-            session_name=self.session_name
-        ) for interface in self.interfaces]
+        [
+            await interface.store(
+                sid,
+                self.expiry,
+                val,
+                request=request,
+                cookie_name=self.cookie_name,
+                session_name=self.session_name,
+            )
+            for interface in self.interfaces
+        ]
 
     async def _del_sess(self, sid, request=None, response=None):
-        [await interface.delete(
-            sid, 
-            request=request, 
-            cookie_name=self.cookie_name, 
-            session_name=self.session_name
-        ) for interface in self.interfaces]
+        [
+            await interface.delete(
+                sid,
+                request=request,
+                cookie_name=self.cookie_name,
+                session_name=self.session_name,
+            )
+            for interface in self.interfaces
+        ]
 
     #### ------------- Helpers ------------ ####
 
@@ -137,20 +135,22 @@ class BaseSession:
     @property
     def _is_static_master_interface(self):
         # Static interfaces don't change their SID automatically when the
-        # value of their underlying store changes (Unlike Fernet, which always changes when modified) 
-        return True in tuple(map(lambda interface: isinstance(
-            self.master_interface, 
-            interface
-        ), STATIC_SID_COOKIE_INTERFACES))
+        # value of their underlying store changes (Unlike Fernet, which always changes when modified)
+        return True in tuple(
+            map(
+                lambda interface: isinstance(self.master_interface, interface),
+                STATIC_SID_COOKIE_INTERFACES,
+            )
+        )
 
     def refresh_sid(self, sess):
-        '''
+        """
         Important:
         
             - Use this whenever your app does any user-privelage escalation to avoid session fixation attacks 
             - Use this method with an async ctx manager 
             - You don't have to use this with Authsess.login_user. Its already being handled for you
-        '''
+        """
         if self._is_static_master_interface:
             sess.sid = self.master_interface.sid_factory()
         return sess
@@ -158,7 +158,7 @@ class BaseSession:
     #### -------------- Loading --------------- ####
 
     async def _open_sess(self, request):
-        ''' Sets a session_dict to request '''
+        """ Sets a session_dict to request """
         # NOTE: SHOULD NOT RETURN ANY VALUE, unless you know what you're doing
         # TODO: Find a way to optimize session fetching
         # Instead of fetching a session twice, once at the beggining of a request
@@ -175,7 +175,7 @@ class BaseSession:
         # If we're going to validate the SID using the second method, then we might as well set it to the request rendering
         # this optimization effort useless.
         # A better way that would allow implementing such optimization with ease is to move the session's async
-        # ctx manager to this object instead of the session dict. This would however make it harder for 3rd party 
+        # ctx manager to this object instead of the session dict. This would however make it harder for 3rd party
         # libs to access the session dict
         # and also would make it even harder to have to maintain the current API where you can
         # access the session object via request['session'] at request start
@@ -183,20 +183,14 @@ class BaseSession:
         if not sid:
             sid = self.master_interface.sid_factory()
             request[self.session_name] = self.store_factory(
-                sid=sid,
-                session=self,
-                warn_lock=self.warn_lock,
-                request=request
+                sid=sid, session=self, warn_lock=self.warn_lock, request=request
             )
         else:
             initial = await self._fetch_sess(sid, request=request)
             if not initial:
                 sid = self.master_interface.sid_factory()
                 request[self.session_name] = self.store_factory(
-                    sid=sid,
-                    session=self,
-                    warn_lock=self.warn_lock,
-                    request=request
+                    sid=sid, session=self, warn_lock=self.warn_lock, request=request
                 )
             else:
                 request[self.session_name] = self.store_factory(
@@ -204,8 +198,8 @@ class BaseSession:
                     sid=sid,
                     session=self,
                     warn_lock=self.warn_lock,
-                    request=request
-            )
+                    request=request,
+                )
 
     #### ------------ Saving --------------- ####
 
@@ -236,7 +230,9 @@ class BaseSession:
                 session_dict._should_del_cookie = True
 
             elif session_dict.is_modified:
-                await self._post_sess(session_dict.sid, session_dict.store, request=request)
+                await self._post_sess(
+                    session_dict.sid, session_dict.store, request=request
+                )
                 session_dict.is_modified = False
                 session_dict._should_set_cookie = True
 
@@ -251,20 +247,22 @@ class BaseSession:
 
     async def _set_cookie_expiry(self, request, response):
         if not self.session_cookie:
-            response.cookies[self.cookie_name]['expires'] = self._calculate_expires(self.expiry)
-            response.cookies[self.cookie_name]['max-age'] = self.expiry
+            response.cookies[self.cookie_name]["expires"] = self._calculate_expires(
+                self.expiry
+            )
+            response.cookies[self.cookie_name]["max-age"] = self.expiry
         return request, response
 
     async def _set_cookie(self, sid, request, response):
         response.cookies[self.cookie_name] = sid
         request, response = await self._set_cookie_expiry(request, response)
         for name, value in {
-            'httponly': self.httponly,
-            'domain': self.domain,
-            'samesite': self.samesite,
-            'secure': self.secure,
-            'path': self.path,
-            'comment': self.comment
+            "httponly": self.httponly,
+            "domain": self.domain,
+            "samesite": self.samesite,
+            "secure": self.secure,
+            "path": self.path,
+            "comment": self.comment,
         }.items():
             if value is not None:
                 response.cookies[self.cookie_name][name] = value
@@ -275,26 +273,26 @@ class BaseSession:
         except KeyError:
             pass
 
+
 class Session(BaseSession):
-    '''
+    """
     Generic Session
-    '''
+    """
+
     def __init__(
         self,
         app,
         master_interface=None,  # Master read
-
-        cookie_name='SESSION',
+        cookie_name="SESSION",
         domain=None,
-        expiry=30*24*60*60,
+        expiry=30 * 24 * 60 * 60,
         httponly=False,
         secure=False,
         samesite=False,
         session_cookie=False,
         path=None,
         comment=None,
-
-        session_name='session',
+        session_name="session",
         warn_lock=True,
         store_factory=SessionDict,
     ):
@@ -310,7 +308,6 @@ class Session(BaseSession):
             session_cookie=session_cookie,
             path=path,
             comment=comment,
-
             session_name=session_name,
             warn_lock=warn_lock,
             store_factory=store_factory,

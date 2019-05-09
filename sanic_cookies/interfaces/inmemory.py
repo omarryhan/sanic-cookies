@@ -31,21 +31,23 @@ class ExpiringDict(dict):
         except KeyError:
             return
 
+
 class InMemory:
-    '''
+    """
         encoder & decoder:
 
             e.g. json, ujson, pickle, cpickle, bson, msgpack etc..
             Default ujson
-    '''
+    """
+
     def __init__(
-        self, 
-        store=ExpiringDict, 
-        prefix='session:', 
-        cleanup_interval=60*60*1, 
-        encoder=ujson.dumps, 
-        decoder=ujson.loads, 
-        sid_factory=lambda: uuid.uuid4().hex
+        self,
+        store=ExpiringDict,
+        prefix="session:",
+        cleanup_interval=60 * 60 * 1,
+        encoder=ujson.dumps,
+        decoder=ujson.loads,
+        sid_factory=lambda: uuid.uuid4().hex,
     ):
         self.prefix = prefix
         self._store = store()
@@ -82,11 +84,7 @@ class InMemory:
     async def store(self, sid, expiry, val, **kwargs):
         if val is not None:
             val = self.encoder(val)
-            self._store.set(
-                self.prefix + sid,
-                expiry,
-                val
-            )
+            self._store.set(self.prefix + sid, expiry, val)
 
     async def delete(self, sid, **kwargs):
         self._store.delete(self.prefix + sid)

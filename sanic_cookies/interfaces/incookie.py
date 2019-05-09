@@ -1,8 +1,9 @@
 import ujson
 from cryptography.fernet import Fernet, InvalidToken
 
+
 class InCookieEnc:
-    '''
+    """
         Encrypted in-cookie storage
 
         key e.g. cryptography.fernet.Fernet.generate_key()
@@ -10,8 +11,11 @@ class InCookieEnc:
         Always use this interface alone without any additional interfaces.
         
         If in doubt, instantiate a new Session object and set this as the master interface and none else
-    '''
-    def __init__(self, key, encoder=ujson.dumps, decoder=ujson.loads):  # pragma: no cover
+    """
+
+    def __init__(
+        self, key, encoder=ujson.dumps, decoder=ujson.loads
+    ):  # pragma: no cover
         self.fernet = Fernet(key)
         self.encoder = encoder
         self.decoder = decoder
@@ -23,7 +27,7 @@ class InCookieEnc:
             try:
                 val = val.encode()
             except AttributeError:
-                val = b'{}'
+                val = b"{}"
         return val
 
     def _encrypt(self, val):

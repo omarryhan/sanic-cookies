@@ -2,9 +2,10 @@ import time
 
 from sanic_cookies.interfaces.inmemory import ExpiringDict
 
+
 def test_entry_expires():
-    K = 'foo'
-    V = 'BAR'
+    K = "foo"
+    V = "BAR"
     TIME = 0.1
 
     expiring_dict = ExpiringDict()
@@ -17,6 +18,7 @@ def test_entry_expires():
     assert expiring_dict.get(K) is None
     assert len(expiring_dict) == 0
     assert len(expiring_dict.expiry_times) == 0
+
 
 def test_cleanup():
     # TODO

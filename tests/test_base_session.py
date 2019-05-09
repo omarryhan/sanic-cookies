@@ -1,6 +1,7 @@
 from sanic_cookies.sessions.base import BaseSession
 from .common import MockInterface, MockApp, MockSession
 
+
 def test_middlewares_registered():
     app = MockApp()
     sess = BaseSession(app=app)

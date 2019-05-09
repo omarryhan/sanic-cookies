@@ -8,23 +8,27 @@ from .base import BaseSession
 from ..models import SessionDict
 
 
-__all__ = ['AuthSession', 'login_required']
+__all__ = ["AuthSession", "login_required"]
+
 
 def default_no_auth_handler(request, *args, **kwargs):
     abort(401)
 
 
-_REMEMBER_ME_KEY = '_remember_me'
-_DURATION_KEY = '_override_expiry'
-_EXEMPT_METHODS = set(['OPTIONS'])
+_REMEMBER_ME_KEY = "_remember_me"
+_DURATION_KEY = "_override_expiry"
+_EXEMPT_METHODS = set(["OPTIONS"])
 
 
-def login_required(no_auth_handler=None, session_name='auth_session'):
+def login_required(no_auth_handler=None, session_name="auth_session"):
     def wrapped(fn):
         @wraps(fn)
         async def innerwrap(request, *args, **kwargs):
             self = getattr(request.app.exts, session_name)
-            if request.method not in _EXEMPT_METHODS and await self.current_user(request) is None:
+            if (
+                request.method not in _EXEMPT_METHODS
+                and await self.current_user(request) is None
+            ):
                 return_function = no_auth_handler or default_no_auth_handler
             else:
                 return_function = fn
@@ -32,17 +36,22 @@ def login_required(no_auth_handler=None, session_name='auth_session'):
                 return await return_function(request, *args, **kwargs)
             else:
                 return return_function(request, *args, **kwargs)
+
         return innerwrap
+
     return wrapped
 
+
 class AuthSession(BaseSession):
-    '''
+    """
     Session with auth helpers
 
     .. note::
 
-        Remember to tighten cookie security before deploying in production
-            e.g. set secure = True etc...
+        Remember to tighten cookie security before deploying to production
+            e.g. 
+                set secure = True
+                set samesite to either lax or secure etc...
 
     Arguments:
 
@@ -63,26 +72,24 @@ class AuthSession(BaseSession):
             .. example::
 
                 no_auth_handler = lambda request: sanic.response.redirect(request.app.url_for('index'))
-    '''
+    """
+
     def __init__(
         self,
         app,
         master_interface=None,  # Master read
-
-        cookie_name='SECURE_SESSION',
+        cookie_name="SECURE_SESSION",
         domain=None,
-        expiry=30*24*60*60,
+        expiry=30 * 24 * 60 * 60,
         httponly=None,
         secure=None,
         samesite=True,
         session_cookie=False,
         path=None,
         comment=None,
-
-        session_name='auth_session',
+        session_name="auth_session",
         warn_lock=True,
-
-        auth_key='current_user',
+        auth_key="current_user",
         no_auth_handler=None,
         store_factory=SessionDict,
     ):
@@ -101,14 +108,15 @@ class AuthSession(BaseSession):
             session_cookie=session_cookie,
             path=path,
             comment=comment,
-
             session_name=session_name,
             warn_lock=warn_lock,
             store_factory=store_factory,
         )
 
-    async def login_user(self, request, user, duration=None, remember_me=None, reset_session=True):
-        '''
+    async def login_user(
+        self, request, user, duration=None, remember_me=None, reset_session=True
+    ):
+        """
             Don't use this method with an async context manager. Just await it
  
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
@@ -116,7 +124,7 @@ class AuthSession(BaseSession):
             remember_me (bool): Whether or not this user session will be a session_cookie. Defaults to self.session_cookie
             reset_session: Whether or not to reset the session dict before adding a current user
                          Defaults to persisting data from anonymous user
-        '''
+        """
         if not user:
             raise TypeError('user must be a truthy value, not: "{}"'.format(user))
         async with request[self.session_name] as sess:
@@ -133,15 +141,20 @@ class AuthSession(BaseSession):
     # Overriding (to set custom expiry (login_user(duration)))
     async def _post_sess(self, sid, val, request=None, response=None):
         # Get custom expiry
-        expiry = val.get(_DURATION_KEY) or self.expiry if val is not None else self.expiry
-        [await interface.store(
-            sid, 
-            expiry, 
-            val, 
-            request=request, 
-            cookie_name=self.cookie_name, 
-            session_name=self.session_name
-        ) for interface in self.interfaces]
+        expiry = (
+            val.get(_DURATION_KEY) or self.expiry if val is not None else self.expiry
+        )
+        [
+            await interface.store(
+                sid,
+                expiry,
+                val,
+                request=request,
+                cookie_name=self.cookie_name,
+                session_name=self.session_name,
+            )
+            for interface in self.interfaces
+        ]
 
     # Overriding (to set remember_me)
     async def _set_cookie_expiry(self, request, response):
@@ -155,13 +168,15 @@ class AuthSession(BaseSession):
             expiry = sess.get(_DURATION_KEY) or self.expiry
 
         if not session_cookie:
-            response.cookies[self.cookie_name]['expires'] = self._calculate_expires(expiry)
-            response.cookies[self.cookie_name]['max-age'] = expiry
+            response.cookies[self.cookie_name]["expires"] = self._calculate_expires(
+                expiry
+            )
+            response.cookies[self.cookie_name]["max-age"] = expiry
         return request, response
 
     async def logout_user(self, request, logout_anon=True):
-        ''' logout_anon: Set to false to delete the authenticated session only when
-        there's a logged in user '''
+        """ logout_anon: Set to false to delete the authenticated session only when
+        there's a logged in user """
         async with request[self.session_name] as sess:
             if logout_anon or (not logout_anon and sess.get(self.auth_key)):
                 sess.reset()
@@ -172,6 +187,6 @@ class AuthSession(BaseSession):
 
     def login_required(self, no_auth_handler=None):
         return login_required(
-            no_auth_handler=no_auth_handler or self.no_auth_handler, 
-            session_name=self.session_name
+            no_auth_handler=no_auth_handler or self.no_auth_handler,
+            session_name=self.session_name,
         )

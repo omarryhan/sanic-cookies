@@ -1,10 +1,11 @@
 <p align="center">
   <img src="https://upload.wikimedia.org/wikipedia/commons/7/70/Cookie.png" alt="Logo" width="250" height="250"/>
   <p align="center">
-    <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square"></a>
-    <a href="https://travis-ci.org/omarryhan/sanic-cookies"><img alt="Build Status" src="https://travis-ci.org/omarryhan/sanic-cookies.svg?branch=master"></a>
-    <a href="https://pepy.tech/badge/sanic-cookies"><img alt="Downloads" src="https://pepy.tech/badge/sanic-cookies"></a>
-    <a href="https://pepy.tech/badge/sanic-cookies/month"><img alt="Monthly Downloads" src="https://pepy.tech/badge/sanic-cookies/month"></a>
+    <a href="https://github.com/omarryhan/sanic-cookies"><img alt="Software License" src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square" /></a>
+    <a href="https://travis-ci.org/omarryhan/sanic-cookies"><img alt="Build Status" src="https://travis-ci.org/omarryhan/sanic-cookies.svg?branch=master" /></a>
+    <a href="https://github.com/python/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg" /></a>
+    <a href="https://pepy.tech/badge/sanic-cookies"><img alt="Downloads" src="https://pepy.tech/badge/sanic-cookies" /></a>
+    <a href="https://pepy.tech/badge/sanic-cookies/month"><img alt="Monthly Downloads" src="https://pepy.tech/badge/sanic-cookies/month" /></a>
   </p>
 </p>
 
@@ -137,19 +138,22 @@ Following up on the previous example:
 
     @app.route('/login')
     async def login(request):
-        # 1. {{ User verification logic }}
-        authorized_user = 123 
-        authorized_user = {'user_id': 123, 'email': 'foo@bar.baz'}
+        # 1. User verification logic
+
         # both will work (Whatever is json serializble will)
         # If you want to pickle an object simply change the default
         # encoder&decoder in the interfaces plugged in to your AuthSession
+        authorized_user = 123 
+        authorized_user = {'user_id': 123, 'email': 'foo@bar.baz'}
 
         # 2. Login user
+
         # Here we access the session object
         # (not the session dict that is accessible from the request) from the app
         await request.app.exts.auth_session.login_user(request, authorized_user)
 
         # 3. Use the session dict safely and exclusively for the logged in user
+
         async with request['auth_session'] as sess:
             sess['foo'] = 'bar'
             current_user = sess['current_user']
@@ -196,7 +200,51 @@ Following up on the previous example:
                 sess['foo'] = 'bar'
 
 2. Aioredis
+
+        from aioredis import Aioredis
+        from sanic_cookies import Aioredis as AioredisInterface
+        from sanic import Sanic
+
+        app = Sanic()
+        aioredis_pool_instance = Aioredis()
+        aioredis = AioredisInterface(aioredis_pool_instance)
+        Session(app, master_interface=interface)
+
+        @app.route('/')
+        async def handler(request):
+            async with request['session'] as sess:
+                sess['foo'] = 'bar'
+
 3. Encrypted in-cookie (using the amazing cryptography.Fernet library)
+
+    1. Open a Python terminal and generate a new Fernet key:
+
+            >>> from cryptography.fernet import Fernet
+
+            >>> SESSION_KEY = Fernet.generate_key()
+
+            >>> print(SESSION_KEY)
+
+            b'copy me to your sanic app and keep me really secure'
+
+    2. Write your app
+
+            from sanic import Sanic
+            from sanic_cookies import Session, InCookieEnc
+
+            app = Sanic()
+            app.config.SESSION_KEY = SESSION_KEY
+
+            Session(
+                app,
+                master_interface=InCookieEnc(app.config.SESSION_KEY),
+            )
+
+            @app.route('/')
+            async def handler(request):
+                async with request['session'] as sess:
+                    sess['foo'] = 'bar'
+
 4. Gino-AsyncPG (Postgres 9.5+):
 
     1. Manually create a table:
