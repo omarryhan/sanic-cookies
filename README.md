@@ -250,21 +250,21 @@ async def protected(request):
     ii. Write your app
 
     ```python 3.7
-        from sanic import Sanic
-        from sanic_cookies import Session, InCookieEnc
+    from sanic import Sanic
+    from sanic_cookies import Session, InCookieEnc
 
-        app = Sanic()
-        app.config.SESSION_KEY = SESSION_KEY
+    app = Sanic()
+    app.config.SESSION_KEY = SESSION_KEY
 
-        Session(
-            app,
-            master_interface=InCookieEnc(app.config.SESSION_KEY),
-        )
+    Session(
+        app,
+        master_interface=InCookieEnc(app.config.SESSION_KEY),
+    )
 
-        @app.route('/')
-        async def handler(request):
-            async with request['session'] as sess:
-                sess['foo'] = 'bar'
+    @app.route('/')
+    async def handler(request):
+        async with request['session'] as sess:
+            sess['foo'] = 'bar'
     ```
 
 4. Gino-AsyncPG (Postgres 9.5+):
@@ -272,35 +272,35 @@ async def protected(request):
     i. Manually create a table:
 
     ```sql
-        CREATE TABLE IF NOT EXISTS sessions
-        (
-            created_at timestamp without time zone NOT NULL,
-            expires_at timestamp without time zone,
-            sid character varying,
-            val character varying,
-            CONSTRAINT sessions_pkey PRIMARY KEY (sid)
-        );
+    CREATE TABLE IF NOT EXISTS sessions
+    (
+        created_at timestamp without time zone NOT NULL,
+        expires_at timestamp without time zone,
+        sid character varying,
+        val character varying,
+        CONSTRAINT sessions_pkey PRIMARY KEY (sid)
+    );
     ```
 
     ii. Add the interface:
 
     ```python 3.7
-        from sanic import Sanic
-        from gino.ext.sanic import Gino
-        from sanic_cookies import GinoAsyncPG
+    from sanic import Sanic
+    from gino.ext.sanic import Gino
+    from sanic_cookies import GinoAsyncPG
 
-        from something_secure import DB_SETTINGS
+    from something_secure import DB_SETTINGS
 
-        app = Sanic()
-        app.config.update(DB_SETTINGS)
-        db = Gino()
-        db.init_app(app)
+    app = Sanic()
+    app.config.update(DB_SETTINGS)
+    db = Gino()
+    db.init_app(app)
 
-        interface = GinoAsyncPG(client=db)
-        auth_session = AuthSession(app, master_interface=interface)
+    interface = GinoAsyncPG(client=db)
+    auth_session = AuthSession(app, master_interface=interface)
 
-        if __name__ == '__main__':
-            app.run(host='127.0.0.1', port='8080')
+    if __name__ == '__main__':
+        app.run(host='127.0.0.1', port='8080')
     ```
 
 ## Sessions available
