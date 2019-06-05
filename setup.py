@@ -12,12 +12,12 @@ REQUIREMENTS = ["ujson", "sanic", "cryptography"]
 
 TEST_REQUIREMENTS = []
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     LONG_DESCRIPTION = fh.read()
 
 setuptools.setup(
     name="sanic_cookies",
-    version="0.4.0",
+    version="0.4.1",
     author="Omar Ryhan",
     author_email="omarryhan@gmail.com",
     license="GNU",
