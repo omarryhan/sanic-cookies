@@ -21,7 +21,7 @@ setuptools.setup(
     author="Omar Ryhan",
     author_email="omarryhan@gmail.com",
     license="GNU",
-    description="Sanic Cookie and Session Management",
+    description="Cookies and Session Management for Sanic",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     install_requires=REQUIREMENTS,
