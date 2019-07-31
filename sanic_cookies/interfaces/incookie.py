@@ -4,7 +4,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 __all__ = ('InCookieEncrypted')
 
-class InCookieEnc:
+class InCookieEncrypted:
     """
         Encrypted in-cookie storage
 
@@ -71,4 +71,6 @@ class InCookieEnc:
         if request[session_name]._prev_sid:
             request[session_name]._prev_sid.pop()
 
-InCookieEncrypted = InCookieEnc
+# For name backward compatibility
+InCookieEnc = InCookieEncrypted
+
