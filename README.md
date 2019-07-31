@@ -97,12 +97,12 @@ async def index(request):
 ### Running multiple sessions
 
 ```python 3.7
-from sanic_cookies import Session, AuthSession, InMemory, InCookieEnc, AioRedis
+from sanic_cookies import Session, AuthSession, InMemory, InCookieEncrypted, AioRedis
 from sanic import Sanic
 
 inmem = InMemory()
 aioredis = Aioredis(aioredis_pool_instance)
-incookie = InCookieEnc(b'fernetsecretkey')
+incookie = InCookieEncrypted(b'fernetsecretkey')
 
 app = Sanic()
 
@@ -251,14 +251,14 @@ async def protected(request):
 
     ```python 3.7
     from sanic import Sanic
-    from sanic_cookies import Session, InCookieEnc
+    from sanic_cookies import Session, InCookieEncrypted
 
     app = Sanic()
     app.config.SESSION_KEY = SESSION_KEY
 
     Session(
         app,
-        master_interface=InCookieEnc(app.config.SESSION_KEY),
+        master_interface=InCookieEncrypted(app.config.SESSION_KEY),
     )
 
     @app.route('/')

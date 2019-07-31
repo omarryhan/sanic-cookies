@@ -2,6 +2,8 @@ import ujson
 from cryptography.fernet import Fernet, InvalidToken
 
 
+__all__ = ('InCookieEncrypted')
+
 class InCookieEnc:
     """
         Encrypted in-cookie storage
@@ -68,3 +70,5 @@ class InCookieEnc:
         # Shouldn't set is_sid_modified, else it will infinitely loop
         if request[session_name]._prev_sid:
             request[session_name]._prev_sid.pop()
+
+InCookieEncrypted = InCookieEnc

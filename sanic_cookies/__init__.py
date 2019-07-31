@@ -1,4 +1,4 @@
-from .interfaces import InMemory, GinoAsyncPG, Aioredis, InCookieEnc
+from .interfaces import InMemory, GinoAsyncPG, Aioredis, InCookieEncrypted
 
 from .models import SessionDict
 
