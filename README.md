@@ -19,30 +19,43 @@ Sanic cookies supports both client side and server side cookies.
 
 ## Main deviations from sanic_session are
 
-1. Interfaces are only responsible for reading/writing the `session_dict`. Session management logic is handled by the session object
-2. No race conditions:
+- **Interfaces are only responsible for reading/writing the `SessionDict`:**
 
-By using:
+  Session management logic is handled by the `Session` object
 
-```python 3.7
-async with request['session']:
+- **No race conditions**:
+
+  *By using:*
+
+    ```python 3.7
+    async with request['session']:
+        request['session']['foo'] = 'bar'
+    ```
+
+  *instead of:*
+
+    ```python 3.7
     request['session']['foo'] = 'bar'
-```
+    ```
 
-instead of:
+  It is still however possible to use the `session_dict` without a context manager, but it will raise some warnings,
+  unless it's explicitly turned off (warn_lock=False)
 
-```python 3.7
-request['session']['foo'] = 'bar'
-```
+  **Note:**
 
-It is still however possible to use the `session_dict` without a context manager, but it will raise some warnings,
-unless it's explicitly turned off (warn_lock=False)
+    The locking mechanism used here only keeps track of locks on a thread-level, which means, an application that is horizontally scaled or one that runs on more than one process won't fully benefit from the locking mechanism that sanic-cookies currently has in place and might encounter some race conditions.
+    I have plans to introduce a distributed locking mechanism. Probably using something like: [Aioredlock](https://github.com/joanvila/aioredlock).
+    But for now, you should know that the locking mechanism that is currently in place will not work in a multi-process environment.
 
-3. A more simple implementation of SessionDict that helps me sleep in peace at night. (Probably less performant)
-4. In memory interface schedules cleanup to avoid running out of memory
-5. Encrypted client side cookies interface
-6. Ability to add more than one interface to the same session
-7. Authenticated Session implementation
+- **A simpler implementation of SessionDict that helps me sleep in peace at night. (Probably less performant)**
+
+- **In memory interface schedules cleanup to avoid running out of memory**
+
+- **Encrypted client side cookie interface**
+
+- **Ability to add more than one interface to the same session**
+
+- **Authenticated Session implementation**
 
 ## Setup ⚙️
 
