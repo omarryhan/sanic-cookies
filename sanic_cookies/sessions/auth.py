@@ -83,7 +83,7 @@ class AuthSession(BaseSession):
         expiry=30 * 24 * 60 * 60,
         httponly=None,
         secure=None,
-        samesite=True,
+        samesite='lax',
         session_cookie=False,
         path=None,
         comment=None,
