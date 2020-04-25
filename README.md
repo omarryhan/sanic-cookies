@@ -15,15 +15,17 @@ Much of the code here is borrowed from [sanic_session](https://github.com/xen/sa
 
 I wanted to make some changes that would break a big part of `sanic_session`'s API, so I decided to create this repo instead.
 
-Sanic cookies supports both client side and server side cookies.
+Sanic Cookies emphasizes on:
 
-## Main deviations from sanic_session are
+1. Security
 
-- **Interfaces are only responsible for reading/writing the `SessionDict`:**
+2. API stability
 
-  Session management logic is handled by the `Session` object
+## Main differences from [sanic_session](https://github.com/xen/sanic_session) are:
 
-- **No race conditions**:
+- Authenticated Session implementation (Session object with login and logout logic)
+
+- No race conditions:
 
   *By using:*
 
@@ -47,15 +49,21 @@ Sanic cookies supports both client side and server side cookies.
     I have plans to introduce a distributed locking mechanism. Probably using something like: [Aioredlock](https://github.com/joanvila/aioredlock).
     But for now, you should know that the locking mechanism that is currently in place will not work in a multi-process environment.
 
-- **A simpler implementation of SessionDict that helps me sleep in peace at night. (Probably less performant)**
+- Encrypted client side cookie interface
 
-- **In memory interface schedules cleanup to avoid running out of memory**
+- AsyncPG interface
 
-- **Encrypted client side cookie interface**
+## Minor differences:
 
-- **Ability to add more than one interface to the same session**
+- Ability to add more than one interface to the same session
 
-- **Authenticated Session implementation**
+- A simpler implementation of SessionDict that helps me sleep in peace at night
+
+- In memory interface schedules cleanup to avoid running out of memory
+
+- Interfaces are only responsible for reading/writing the `SessionDict`:
+
+- Session management logic is handled by the `Session` object
 
 ## Setup ⚙️
 
@@ -78,60 +86,30 @@ async def handler(request):
         sess['foo'] = 'bar'
 ```
 
-## Usage
+## Interfaces (storage) available:
 
-### Running multiple interfaces
+- In-memory (Not recommended for production)
+- Aioredis 
+- Encrypted in-cookie (using the amazing cryptography.Fernet library)
+- Gino-AsyncPG (Postgres 9.5+):
 
-```python 3.7
-from sanic_cookies import Session, InMemory, Aioredis
-from sanic import Sanic
+## Sessions available
 
-inmem = InMemory()
-aioredis = AioRedis(aioredis_pool_instance)
-app = Sanic()
-sess = Session(app, master_interface=inmem, session_name='my_1st_sess')
-sess.add_interface(aioredis)
+1. Session (A generic session interface)
+2. AuthSession (A session interface with login_user, logout_user, current_user logic)
 
-@app.route('/')
-async def index(request):
-    async with request['my_1st_session'] as sess:
-        sess['foo'] = 'bar'
-        # At this point 'foo' = 'bar' is written both to the inmemory
-        # interface and the aioredis interface
 
-    async with request['my_1st_session'] as sess:
-        # When reading, your session will always read from the "master_interface"
-        # In that case it's the inmem interface
-        assert sess['foo'] == 'bar'
-    # Such pattern can be useful in many cases 
-    # e.g. you want to share your session information with an analytics team
-```
+## AuthSession
 
-### Running multiple sessions
+An Auth session is just a normal session but with user authentication capabilities
 
 ```python 3.7
-from sanic_cookies import Session, AuthSession, InMemory, InCookieEncrypted, AioRedis
+from sanic_cookies import AuthSession, AioRedis, login_required
 from sanic import Sanic
 
-inmem = InMemory()
 aioredis = Aioredis(aioredis_pool_instance)
-incookie = InCookieEncrypted(b'fernetsecretkey')
 
 app = Sanic()
-
-incookie_session = Session(
-    app,
-    master_interface=incookie,
-    session_name='incookiesess',
-    cookie_name='INCOOKIE'
-)
-
-generic_session = Session(
-    app,
-    master_interface=inmem,
-    session_name='session',
-    cookie_name='SESSION'
-)
 
 auth_session = AuthSession(
     app,
@@ -140,46 +118,17 @@ auth_session = AuthSession(
     cookie_name='SECURE_SESSION'
 )
 
-# for production (HTTPs) set `secure=True` in your auth_session,
-# but this will fail in local development
-
-@app.route('/')
-async def index(request):
-    async with request['incookie_session'] as sess:
-        sess['foo'] = 'bar'
-
-    async with request['session'] as sess:
-        sess['bar'] = 'baz'
-
-    async with request['auth_session'] as sess:
-        sess['baz'] = 'foo'
-```
-
-### AuthSession
-
-Following up on the previous example:
-
-```python 3.7
-from sanic_cookies import login_required
-
 @app.route('/login')
 async def login(request):
-    # 1. User verification logic
-
-    # both will work (Whatever is json serializble will)
-    # If you want to pickle an object simply change the default
-    # encoder&decoder in the interfaces plugged in to your AuthSession
+    # both will work (Whatever is JSON serializble will)
     authorized_user = 123 
     authorized_user = {'user_id': 123, 'email': 'foo@bar.baz'}
-
-    # 2. Login user
 
     # Here we access the session object
     # (not the session dict that is accessible from the request) from the app
     await request.app.exts.auth_session.login_user(request, authorized_user)
 
-    # 3. Use the session dict safely and exclusively for the logged in user
-
+    # Now you can use the session dict safely and exclusively for the logged in user
     async with request['auth_session'] as sess:
         sess['foo'] = 'bar'
         current_user = sess['current_user']
@@ -202,7 +151,7 @@ async def protected(request):
     assert await request.app.exts.auth_session.current_user() is not None  # should never fail
 ```
 
-## Interfaces available
+## Interface Setup
 
 1. In memory
 
@@ -214,7 +163,7 @@ async def protected(request):
     app = Sanic()
     Session(app, master_interface=interface)
 
-    # You can skip this part if you don't want scheduled interface cleanup
+    # You can skip this part if you don't want scheduled stale sessions cleanup
     @app.listener('before_server_start')
     def init_inmemory(app, loop):
         interface.init()
@@ -246,7 +195,7 @@ async def protected(request):
             sess['foo'] = 'bar'
     ```
 
-3. Encrypted in-cookie (using the amazing cryptography.Fernet library)
+3. Encrypted in-cookie
 
     i. Open a Python terminal and generate a new Fernet key:
 
@@ -260,7 +209,7 @@ async def protected(request):
     b'copy me to your sanic app and keep me really secure'
     ```
 
-    ii. Write your app
+    ii. Your app
 
     ```python 3.7
     from sanic import Sanic
@@ -316,16 +265,54 @@ async def protected(request):
         app.run(host='127.0.0.1', port='8080')
     ```
 
-## Sessions available
+## Master interface & multiple interfaces
 
-1. Session (A generic session interface)
-2. AuthSession (A session interface with login_user, logout_user, current_user logic)
+A master interface is the interface that sanic-cookies will read from. The word master is relevant for when you have multiple interfaces. When you have multiple interfaces, sanic-cookies will only read from the master-interface but write to all interfaces.
 
-## Other pluggable parts
+```python 3.7
+from sanic_cookies import Session, Aioredis
+from sanic import Sanic
 
-1. Encoders and Decoders (Default to ujson)
-2. SID factory (Default to uuid.uuid4)
-3. Session dict implementation
+aioredis = AioRedis(aioredis_pool_instance)
+app = Sanic()
+sess = Session(app, master_interface=aioredis, session_name='my_1st_sess')
+
+@app.route('/')
+async def index(request):
+    async with request['my_1st_session'] as sess:
+        sess['foo'] = 'bar'
+
+    async with request['my_1st_session'] as sess:
+        # When reading, your session will always read from the "master_interface"
+        assert sess['foo'] == 'bar'
+```
+
+Running multiple interfaces (transports):
+
+```python 3.7
+from sanic_cookies import Session, InMemory, Aioredis
+from sanic import Sanic
+
+inmem = InMemory()
+aioredis = AioRedis(aioredis_pool_instance)
+app = Sanic()
+sess = Session(app, master_interface=inmem, session_name='my_1st_sess')
+sess.add_interface(aioredis)
+
+@app.route('/')
+async def index(request):
+    async with request['my_1st_session'] as sess:
+        sess['foo'] = 'bar'
+        # At this point 'foo' = 'bar' is written both to the inmemory
+        # interface and the aioredis interface
+
+    async with request['my_1st_session'] as sess:
+        # When reading, your session will always read from the "master_interface"
+        # In that case it's the inmem interface
+        assert sess['foo'] == 'bar'
+    # Such pattern can be useful in many cases 
+    # e.g. you want to share your session information with an analytics team
+```
 
 ## Contact 📧
 
