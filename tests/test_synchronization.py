@@ -85,7 +85,14 @@ async def test_awaits_locked_session_dict(Session, Interface):
 
     assert lock_keeper.acquired_locks[SID].locked() is True
 
-    assert len(lock_keeper.acquired_locks[SID]._waiters) == 0
+    # It seems that there has been a change in the asyncio.Lock implementation
+    # In Python 3.8. When there are no awaiters in Py38, the value of _waiters
+    # is None and in py37, the value of _waiters is an empty deque
+    minor_version = sys.version_info[1]
+    if minor_version == 7:
+        assert len(lock_keeper.acquired_locks[SID]._waiters) == 0
+    else:
+        assert lock_keeper.acquired_locks[SID]._waiters is None
 
     with pytest.raises(asyncio.TimeoutError):
         async with timeout(0.1):
