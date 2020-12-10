@@ -4,14 +4,15 @@ from cryptography.fernet import Fernet, InvalidToken
 
 __all__ = ('InCookieEncrypted')
 
+
 class InCookieEncrypted:
     """
         Encrypted in-cookie storage
 
         key e.g. cryptography.fernet.Fernet.generate_key()
-        
+
         Always use this interface alone without any additional interfaces.
-        
+
         If in doubt, instantiate a new Session object and set this as the master interface and none else
     """
 
@@ -71,6 +72,6 @@ class InCookieEncrypted:
         if request[session_name]._prev_sid:
             request[session_name]._prev_sid.pop()
 
+
 # For name backward compatibility
 InCookieEnc = InCookieEncrypted
-

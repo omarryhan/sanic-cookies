@@ -1,16 +1,12 @@
 import sys
 import asyncio
 from async_timeout import timeout
-import pdb
 
-# pdb.set_trace()
-
-import ujson
 import pytest
 
-from sanic_cookies.models import SessionDict, lock_keeper, LockKeeper
-from sanic_cookies import Session, InMemory
-from .common import MockApp, MockInterface, MockSession, MockRequest
+from sanic_cookies.models import SessionDict, lock_keeper
+from sanic_cookies import InMemory
+from .common import MockInterface, MockSession, MockRequest
 
 
 @pytest.mark.asyncio

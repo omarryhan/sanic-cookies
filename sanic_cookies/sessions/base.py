@@ -1,8 +1,5 @@
-import time
 import datetime
 from collections import deque
-
-import ujson
 
 from ..models import SessionDict, Object
 from ..interfaces import STATIC_SID_COOKIE_INTERFACES
@@ -19,7 +16,7 @@ class BaseSession:
             Default: 'session'
 
             name to be accessed from:
-            
+
                 - request[session_name] AND
                 - app.exts.{session_name}
     """
@@ -69,9 +66,9 @@ class BaseSession:
     #### ------------ Interface management ------------- ####
 
     def add_interface(self, interface):
-        """ 
-        If a master_interface exists, any interface added here will only be written to 
-        and will not be read from. Reading will only be done through the "master_interface" 
+        """
+        If a master_interface exists, any interface added here will only be written to
+        and will not be read from. Reading will only be done through the "master_interface"
         However if no master interface is set, adding an interface here will set it as one"""
         self.interfaces.append(interface)
 
@@ -146,9 +143,9 @@ class BaseSession:
     def refresh_sid(self, sess):
         """
         Important:
-        
-            - Use this whenever your app does any user-privelage escalation to avoid session fixation attacks 
-            - Use this method with an async ctx manager 
+
+            - Use this whenever your app does any user-privelage escalation to avoid session fixation attacks
+            - Use this method with an async ctx manager
             - You don't have to use this with Authsess.login_user. Its already being handled for you
         """
         if self._is_static_master_interface:

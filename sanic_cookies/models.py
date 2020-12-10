@@ -43,7 +43,7 @@ UNLOCKED_LOCKED_ACCESS_MIX_MSG = (
             sess['bar'] = 'baz'
 
     If you're seeing this warning message, it means that either you or a library you're using
-    has tried to modify the session object without a context manager then you discarded the changes 
+    has tried to modify the session object without a context manager then you discarded the changes
     that have been made by *correctly* using the async context manager
 """,
     RuntimeWarning,

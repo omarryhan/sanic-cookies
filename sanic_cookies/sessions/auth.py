@@ -1,7 +1,6 @@
 from inspect import iscoroutinefunction
 from functools import wraps
 
-import ujson
 from sanic.exceptions import abort
 
 from .base import BaseSession
@@ -26,8 +25,9 @@ def login_required(no_auth_handler=None, session_name="auth_session"):
         async def innerwrap(request, *args, **kwargs):
             self = getattr(request.app.exts, session_name)
             if (
-                request.method not in _EXEMPT_METHODS
-                and await self.current_user(request) is None
+                request.method not in _EXEMPT_METHODS and await self.current_user(
+                    request
+                ) is None
             ):
                 return_function = no_auth_handler or default_no_auth_handler
             else:
@@ -49,7 +49,7 @@ class AuthSession(BaseSession):
     .. note::
 
         Remember to tighten cookie security before deploying to production
-            e.g. 
+            e.g.
                 set secure = True
                 set samesite to either lax or secure etc...
 
@@ -62,7 +62,7 @@ class AuthSession(BaseSession):
         no_auth_handler:
 
             async or sync function that takes: 1 arg (request) when no logged in user is found
-            
+
             .. example::
 
                 no_auth_handler = lambda request: sanic.exceptions.abort(401)
@@ -118,7 +118,7 @@ class AuthSession(BaseSession):
     ):
         """
             Don't use this method with an async context manager. Just await it
- 
+
             Duration = Duration to be stored in store (Must be <= to the cookie's expiry i.e. self.expiry)
             Duration defaults to self.expiry (in seconds)
             remember_me (bool): Whether or not this user session will be a session_cookie. Defaults to self.session_cookie
@@ -128,7 +128,7 @@ class AuthSession(BaseSession):
         if not user:
             raise TypeError('user must be a truthy value, not: "{}"'.format(user))
         async with request[self.session_name] as sess:
-            ## Delete previous SID upon privelage escelation to avoid session fixation attacks
+            # Delete previous SID upon privelage escelation to avoid session fixation attacks
             sess = self.refresh_sid(sess)
             if reset_session is True:
                 sess.reset()
