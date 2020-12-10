@@ -1,0 +1,8 @@
+graft sanic_cookies/
+include requirements.txt
+include test_requirements.txt
+include README.md
+global-exclude *.pyc
+global-exclude */keys.yaml
+prune tests/
+global-exclude **/*Zone.Identifier
